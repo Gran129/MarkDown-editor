@@ -2,6 +2,16 @@
 
 跨平台桌面 Markdown 编辑器：**Word 式 WYSIWYG 编辑** + **Obsidian 式 Vault 文件管理**。
 
+仓库：[Gran129/MarkDown-editor](https://github.com/Gran129/MarkDown-editor)
+
+## 下载（Windows）
+
+| 文件 | 说明 |
+|------|------|
+| [MarkDown 编辑器_0.1.0_x64-setup.exe](https://github.com/Gran129/MarkDown-editor/releases/latest/download/MarkDown-%E7%BC%96%E8%BE%91%E5%99%A8_0.1.0_x64-setup.exe) | NSIS 安装程序（推荐） |
+| [MarkDown 编辑器.exe](https://github.com/Gran129/MarkDown-editor/releases/latest/download/MarkDown-%E7%BC%96%E8%BE%91%E5%99%A8.exe) | 便携版，免安装 |
+
+> 需要 **Windows 10/11** 与 **WebView2** 运行时。首次运行若出现 SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 ## 功能
 
 - Vault 工作区（本地文件夹作为知识库）
@@ -64,9 +74,15 @@ npm run tauri build
 
 产物位于 `src-tauri/target/release/bundle/`：
 
-- Windows: `.msi` / `.exe`
+- Windows: NSIS 安装包（`.exe`）+ 便携版
 - macOS: `.dmg` / `.app`
 - Linux: `.AppImage` / `.deb`
+
+Windows 一键打包：
+
+```bash
+npm run build:win
+```
 
 ## 快捷键
 
