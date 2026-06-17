@@ -17,7 +17,7 @@ if ($LASTEXITCODE -ne 0) {
 git branch -M main
 
 Write-Host "创建仓库 MarkDown编辑器 并推送..." -ForegroundColor Cyan
-gh repo create "MarkDown编辑器" `
+gh repo create "MarkDown-editor" `
     --public `
     --description "Word式Markdown编辑器，Obsidian式Vault文件管理（Tauri 2 + React + TipTap）" `
     --source=. `
