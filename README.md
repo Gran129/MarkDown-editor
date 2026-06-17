@@ -8,8 +8,9 @@
 
 | 文件 | 说明 |
 |------|------|
-| [MarkDown 编辑器_0.1.0_x64-setup.exe](https://github.com/Gran129/MarkDown-editor/releases/latest/download/MarkDown-%E7%BC%96%E8%BE%91%E5%99%A8_0.1.0_x64-setup.exe) | NSIS 安装程序（推荐） |
-| [MarkDown 编辑器.exe](https://github.com/Gran129/MarkDown-editor/releases/latest/download/MarkDown-%E7%BC%96%E8%BE%91%E5%99%A8.exe) | 便携版，免安装 |
+| [MarkDown-editor_0.1.0_x64-setup.exe](https://github.com/Gran129/MarkDown-editor/releases/latest/download/MarkDown-editor_0.1.0_x64-setup.exe) | NSIS 安装程序（推荐） |
+| [MarkDown-editor_0.1.0_portable.exe](https://github.com/Gran129/MarkDown-editor/releases/latest/download/MarkDown-editor_0.1.0_portable.exe) | 便携版，免安装 |
+| [INSTALL.zh-CN.txt](https://github.com/Gran129/MarkDown-editor/releases/latest/download/INSTALL.zh-CN.txt) | 安装说明 |
 
 > 需要 **Windows 10/11** 与 **WebView2** 运行时。首次运行若出现 SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 ## 功能
