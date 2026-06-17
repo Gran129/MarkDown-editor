@@ -1,35 +1,6 @@
-# Dependencies
-node_modules/
-
-# Build
-dist/
-dist-ssr/
-src-tauri/target/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Editor
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.swp
-*.swo
+# Legacy version folder (not tracked)
+V 0.1.0/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Env
-.env
-.env.local
-.env.*.local
-
-# Tauri
-src-tauri/WixTools/
-src-tauri/gen/
-
-# Release artifacts (built locally)
-*.exe
-!src-tauri/icons/**/*.exe
