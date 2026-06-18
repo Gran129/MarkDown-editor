@@ -32,3 +32,5 @@ src-tauri/gen/
 
 # Release artifacts (built locally — upload to GitHub Releases only)
 release/
+*.exe
+!src-tauri/icons/**/*.exe
