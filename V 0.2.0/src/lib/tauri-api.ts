@@ -17,8 +17,8 @@ export async function listRecentVaults(): Promise<VaultInfo[]> {
   return invoke<VaultInfo[]>("list_recent_vaults");
 }
 
-export async function addRecentVault(path: string): Promise<void> {
-  return invoke("add_recent_vault", { path });
+export async function addRecentVault(path: string): Promise<string> {
+  return invoke<string>("add_recent_vault", { path });
 }
 
 export async function listFiles(vaultPath: string): Promise<FileNode[]> {

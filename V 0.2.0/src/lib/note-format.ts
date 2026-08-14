@@ -1,5 +1,7 @@
-/** Native encrypted note format: MarkDown Tardis Encrypted. */
-export const NATIVE_NOTE_EXT = "mdte";
+/** Working notes are plaintext Markdown. Encrypted `.mdte` is export-only. */
+export const NATIVE_NOTE_EXT = "md";
+
+export const ENCRYPTED_NOTE_EXT = "mdte";
 
 export const NOTE_EXTENSIONS = ["mdte", "mde", "md"] as const;
 
@@ -77,10 +79,13 @@ export function resolveNoteMediaFile(
   if (!trimmed || isRemoteMedia(trimmed) || isAbsoluteFilePath(trimmed)) {
     return trimmed;
   }
+  const normalized = trimmed.replace(/\\/g, "/");
   const base = notePath
-    ? isEncryptedNotePath(notePath)
+    ? normalized.startsWith(".resources/") || normalized.includes("/.resources/")
       ? noteWorkDir(notePath)
-      : parentDir(notePath)
+      : isEncryptedNotePath(notePath)
+        ? noteWorkDir(notePath)
+        : parentDir(notePath)
     : (vaultPath ?? "");
   if (!base) return trimmed;
   return `${base}/${trimmed}`.replace(/\\/g, "/").replace(/([^:])\/{2,}/g, "$1/");

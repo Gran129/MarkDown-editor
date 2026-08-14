@@ -24,6 +24,7 @@ import { loadSidebarWidths } from "@/components/layout/ResizableSidebar";
 
 interface AppStore {
   vaultPath: string | null;
+  sourceVaultPath: string | null;
   fileTree: FileNode[];
   tabs: TabState[];
   activeTabPath: string | null;
@@ -131,6 +132,7 @@ const initialSidebarWidths = loadSidebarWidths();
 
 export const useAppStore = create<AppStore>((set, get) => ({
   vaultPath: null,
+  sourceVaultPath: null,
   fileTree: [],
   tabs: [],
   activeTabPath: null,
@@ -164,10 +166,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const selected = path ?? (await openVaultDialog());
     if (!selected) return;
 
-    await addRecentVault(selected);
-    await startVaultWatcher(selected);
-    await indexVault(selected);
-    set({ vaultPath: selected, tabs: [], activeTabPath: null, tagFilter: null });
+    const workPath = await addRecentVault(selected);
+    await startVaultWatcher(workPath);
+    await indexVault(workPath);
+    set({
+      vaultPath: workPath,
+      sourceVaultPath: selected,
+      tabs: [],
+      activeTabPath: null,
+      tagFilter: null,
+    });
     if (get().settings.default_vault) {
       await get().updateSettings({ default_vault: selected });
     }
