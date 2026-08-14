@@ -23,7 +23,7 @@
   - **语法视图**：编辑原始 Markdown 源码（含 YAML frontmatter）
   - **阅读视图**：只读预览，无法修改正文或元数据
   - **编辑视图**：TipTap Word 式所见即所得，含格式化工具栏
-- **Obsidian 式 Markdown**：Wiki 链接 `[[笔记]]`（输入 `[[` 自动补全）、嵌入 `![[笔记]]`、标签 `#tag`、标注块 `> [!note]`、任务列表 `- [ ]`、高亮 `==文本==`、数学公式 `$...$` / `$$...$$`、Mermaid 图表
+- **Obsidian 式 Markdown**：Wiki 链接 `[[笔记]]`（输入 `[[` 自动补全）、嵌入 `![[笔记]]`（含图片与 Word / Excel / PowerPoint 原文件预览）、标签 `#tag`、标注块 `> [!note]`、任务列表 `- [ ]`、高亮 `==文本==`、数学公式 `$...$` / `$$...$$`、Mermaid 图表
 - 大纲面板：按标题层级导航当前笔记
 - 查找与替换（Ctrl+H）
 - 标签系统 `#tag` + 标签面板筛选
@@ -138,7 +138,7 @@ npm run build:win
 - 任务列表 `- [ ]` / `- [x]`，工具栏一键插入
 - 高亮 `==文本==`（Obsidian 语法）
 - 标注块（Callout）`> [!note]` 等 8 种类型
-- 嵌入语法 `![[笔记/图片]]`
+- 嵌入语法 `![[笔记/图片/Office 文件]]`
 - Wiki 链接输入 `[[` 时自动补全笔记名
 - 大纲面板：右侧面板按 H1–H6 跳转
 - 查找与替换对话框（Ctrl+H）
@@ -185,6 +185,7 @@ npm run build:win
 - macOS/Linux 安装版也能识别以便检查更新
 - 增加语法 / 阅读 / 编辑三种视图，可从源码切换到预览或 Word 式编辑
 - 原生笔记格式改为 `.mdte`：保存即加密（Markdown + `.resources`，AES-256-GCM / Argon2id）；旧 `.md` / `.mde` 打开后保存会转换
+- 嵌入 Word / Excel / PowerPoint：工具栏插入 `.docx` / `.xlsx` / `.pptx`（及旧版 `.doc` / `.xls` / `.ppt`）到笔记 `.resources`；阅读/编辑视图按原版式预览页面、工作表与幻灯片；可下载副本，或用 Word / Excel / PowerPoint 打开原文件编辑。旧版二进制格式仍可打开编辑，但不做画布预览。
 
 ### v0.1.0
 

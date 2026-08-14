@@ -2,9 +2,16 @@ import { useEffect, useState } from "react";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
+import { OfficePreview } from "@/components/editor/OfficePreview";
 import { parseFrontmatter } from "@/lib/markdown";
 import { resolveLinkTarget } from "@/lib/link-attrs";
 import { resolveNoteMediaFile, stripNoteExtension } from "@/lib/note-format";
+import {
+  isOfficeFileName,
+  officeKindFromPath,
+  officeLookupPaths,
+  officePreviewKind,
+} from "@/lib/office";
 import { readFile, resolveNotePath } from "@/lib/tauri-api";
 import { useAppStore } from "@/stores/app-store";
 
@@ -25,11 +32,13 @@ export function EmbedView({ node }: NodeViewProps) {
   const vaultPath = useAppStore((s) => s.vaultPath);
   const notePath = useAppStore((s) => s.activeTabPath);
   const isImage = IMAGE_EXT.test(target);
+  const officeKind = officeKindFromPath(target);
+  const isOffice = isOfficeFileName(target);
   const [notePreview, setNotePreview] = useState<string | null>(null);
   const [noteMissing, setNoteMissing] = useState(false);
 
   useEffect(() => {
-    if (!target || isImage || !vaultPath) {
+    if (!target || isImage || isOffice || !vaultPath) {
       setNotePreview(null);
       setNoteMissing(false);
       return;
@@ -57,7 +66,7 @@ export function EmbedView({ node }: NodeViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [target, isImage, vaultPath]);
+  }, [target, isImage, isOffice, vaultPath]);
 
   if (!target) {
     return (
@@ -78,6 +87,25 @@ export function EmbedView({ node }: NodeViewProps) {
         data-size={size ?? undefined}
       >
         <img src={src} alt={target} style={size ? { maxWidth: size } : undefined} />
+      </NodeViewWrapper>
+    );
+  }
+
+  if (isOffice && officeKind) {
+    return (
+      <NodeViewWrapper
+        as="span"
+        className="embed embed-office-node"
+        data-embed="true"
+        data-target={target}
+        data-office="true"
+      >
+        <OfficePreview
+          target={target}
+          kind={officeKind}
+          previewKind={officePreviewKind(target)}
+          candidates={officeLookupPaths(notePath, vaultPath, target)}
+        />
       </NodeViewWrapper>
     );
   }

@@ -587,6 +587,38 @@ pub fn work_dir(note_path: &Path) -> PathBuf {
         .join(format!(".{stem}"))
 }
 
+fn resources_dir(note_path: &Path) -> PathBuf {
+    if is_encrypted_note(note_path) {
+        work_dir(note_path).join(".resources")
+    } else {
+        note_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(".resources")
+    }
+}
+
+/// Copy a local Office (or other) file into the note's `.resources` folder.
+/// Returns the markdown-relative path, e.g. `.resources/slides.pptx`.
+pub fn copy_into_note_resources(note_path: &Path, source_path: &Path) -> Result<String, String> {
+    if !source_path.is_file() {
+        return Err("源文件不存在".to_string());
+    }
+    let resources = resources_dir(note_path);
+    fs::create_dir_all(&resources).map_err(|e| e.to_string())?;
+
+    let mut used: HashSet<String> = HashSet::new();
+    if let Ok(entries) = fs::read_dir(&resources) {
+        for entry in entries.flatten() {
+            used.insert(entry.file_name().to_string_lossy().into_owned());
+        }
+    }
+    let file_name = unique_file_name(&mut used, source_path);
+    let dest = resources.join(&file_name);
+    fs::copy(source_path, &dest).map_err(|e| e.to_string())?;
+    Ok(format!(".resources/{file_name}"))
+}
+
 pub fn read_note_markdown(path: &Path) -> Result<String, String> {
     if is_encrypted_note(path) {
         let data = fs::read(path).map_err(|e| e.to_string())?;
@@ -714,5 +746,26 @@ mod tests {
     fn sanitize_rejects_zip_slip() {
         assert!(sanitize_entry_name("../secret").is_err());
         assert!(sanitize_entry_name(".resources/ok.png").is_ok());
+    }
+
+    #[test]
+    fn copy_office_into_encrypted_note_resources() {
+        let dir = std::env::temp_dir().join(format!("mdte-office-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("temp dir");
+        let note = dir.join("demo.mdte");
+        fs::write(&note, b"placeholder").expect("note");
+        let src = dir.join("slides.pptx");
+        fs::write(&src, b"pk").expect("office file");
+
+        let rel = copy_into_note_resources(&note, &src).expect("copy");
+        assert_eq!(rel, ".resources/slides.pptx");
+        let dest = work_dir(&note).join(".resources").join("slides.pptx");
+        assert_eq!(fs::read(&dest).expect("read dest"), b"pk");
+
+        let rel2 = copy_into_note_resources(&note, &src).expect("copy duplicate");
+        assert_eq!(rel2, ".resources/slides-2.pptx");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }

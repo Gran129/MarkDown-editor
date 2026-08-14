@@ -28,6 +28,7 @@ import {
   resolveNoteMediaFile,
   stripNoteExtension,
 } from "@/lib/note-format";
+import { isOfficeFileName } from "@/lib/office";
 import type { VaultInfo } from "@/lib/types";
 
 function flattenNoteNames(nodes: import("@/lib/types").FileNode[]): string[] {
@@ -85,6 +86,9 @@ export function AppLayout() {
         ? target
         : resolveNoteMediaFile(activeTabPath, vaultPath, target);
       await revealInExplorer(abs);
+      return;
+    }
+    if (isOfficeFileName(target)) {
       return;
     }
     await handleWikiLinkClick(stripNoteExtension(target));

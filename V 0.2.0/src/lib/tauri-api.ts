@@ -143,3 +143,22 @@ export async function getUpdateDownloadProgress(): Promise<
 export async function confirmUpdateInstall(): Promise<void> {
   return invoke("confirm_update_install");
 }
+
+export async function readBinaryFile(path: string): Promise<number[]> {
+  return invoke<number[]>("read_binary_file", { path });
+}
+
+export async function copyFile(source: string, destination: string): Promise<void> {
+  return invoke("copy_file", { source, destination });
+}
+
+export async function copyIntoNoteResources(
+  notePath: string,
+  sourcePath: string,
+): Promise<string> {
+  return invoke<string>("copy_into_note_resources", { notePath, sourcePath });
+}
+
+export async function openPath(path: string): Promise<void> {
+  return invoke("open_path", { path });
+}

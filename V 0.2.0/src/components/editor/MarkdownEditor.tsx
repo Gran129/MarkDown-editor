@@ -38,6 +38,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { saveDraft } from "@/lib/tauri-api";
 import { resolveLinkTarget, sanitizeBrokenWikiLinksInMarkdown } from "@/lib/link-attrs";
 import { isRemoteMedia, resolveNoteMediaFile } from "@/lib/note-format";
+import { isOfficeFileName } from "@/lib/office";
 import { preprocessMarkdown, postprocessMarkdown } from "@/lib/markdown-transform";
 import { syncParagraphBlocksInMarkdown } from "@/lib/block-markdown";
 import { refreshSameFileBlockReferences, refreshSyncedBlockReferences } from "@/lib/block-sync";
@@ -214,7 +215,10 @@ export function MarkdownEditor({
             embedEl.getAttribute("data-target"),
             embedEl.textContent,
           );
-          if (embedTarget) onEmbedClick(embedTarget);
+          if (embedTarget) {
+            if (isOfficeFileName(embedTarget)) return true;
+            onEmbedClick(embedTarget);
+          }
           return true;
         }
         const tagEl = target.closest("[data-tag]");
