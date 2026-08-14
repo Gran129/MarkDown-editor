@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { UpdateChecker } from "@/components/update/UpdateChecker";
 import { useAppStore } from "@/stores/app-store";
+import { indexVault } from "@/lib/tauri-api";
 
 import { useEditorStore } from "@/stores/editor-store";
 
@@ -54,15 +55,31 @@ function useKeyboardShortcuts() {
 
 function useVaultWatcher() {
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
+  const refreshVaultTags = useAppStore((s) => s.refreshVaultTags);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const unlisten = listen("vault-changed", () => {
-      void refreshFileTree();
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void (async () => {
+          await refreshFileTree();
+          const vaultPath = useAppStore.getState().vaultPath;
+          if (!vaultPath) return;
+          try {
+            await indexVault(vaultPath);
+            await refreshVaultTags();
+          } catch {
+            /* index may not be ready yet */
+          }
+        })();
+      }, 400);
     });
     return () => {
+      if (timer) clearTimeout(timer);
       void unlisten.then((fn) => fn());
     };
-  }, [refreshFileTree]);
+  }, [refreshFileTree, refreshVaultTags]);
 }
 
 export default function App() {
