@@ -20,7 +20,7 @@ function EditionBadge({ info }: { info: AppEditionInfo | null }) {
   const networkLabel = info.networkOnline ? "在线" : "离线";
 
   return (
-    <div className="rounded-md border bg-muted/40 p-3 text-sm">
+    <div className="rounded-lg border border-border/80 bg-muted/40 p-3 text-sm">
       <div className="font-medium">{editionLabel}</div>
       <div className="mt-1 text-muted-foreground">
         版本 {info.currentVersion}
@@ -216,9 +216,11 @@ export function HelpDialog() {
         <table className="w-full text-sm">
           <tbody>
             {shortcuts.map(([key, desc]) => (
-              <tr key={key} className="border-b border-border">
-                <td className="py-1.5 font-mono text-primary">{key}</td>
-                <td className="py-1.5 text-muted-foreground">{desc}</td>
+              <tr key={key} className="border-b border-border/70 last:border-0">
+                <td className="py-2 pr-3 align-middle">
+                  <kbd className="app-kbd whitespace-nowrap">{key}</kbd>
+                </td>
+                <td className="py-2 text-muted-foreground">{desc}</td>
               </tr>
             ))}
           </tbody>

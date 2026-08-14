@@ -17,11 +17,13 @@ export function FrontmatterEditor({
     : "";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 text-sm">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border/80 bg-muted/25 px-5 py-2 text-sm">
       <label className="flex items-center gap-2">
-        <span className="text-muted-foreground whitespace-nowrap">标题</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          标题
+        </span>
         <Input
-          className="h-7 w-40"
+          className="h-7 w-44 bg-background/80 shadow-none"
           value={title}
           readOnly={readOnly}
           disabled={readOnly}
@@ -30,9 +32,11 @@ export function FrontmatterEditor({
         />
       </label>
       <label className="flex items-center gap-2">
-        <span className="text-muted-foreground whitespace-nowrap">标签</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          标签
+        </span>
         <Input
-          className="h-7 w-48"
+          className="h-7 w-52 bg-background/80 shadow-none"
           value={tags}
           readOnly={readOnly}
           disabled={readOnly}

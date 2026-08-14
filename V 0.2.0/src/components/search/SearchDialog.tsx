@@ -61,7 +61,7 @@ export function SearchDialog() {
               <li key={r.path}>
                 <button
                   type="button"
-                  className="w-full rounded-md px-2 py-1.5 text-left hover:bg-accent"
+                  className="w-full rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent/80"
                   onClick={() => {
                     void openFile(r.path);
                     setSearchOpen(false);
@@ -118,7 +118,7 @@ export function QuickSwitcherDialog() {
               <li key={path}>
                 <button
                   type="button"
-                  className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                  className="w-full rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent/80"
                   onClick={() => {
                     void openFile(path);
                     setQuickSwitcherOpen(false);

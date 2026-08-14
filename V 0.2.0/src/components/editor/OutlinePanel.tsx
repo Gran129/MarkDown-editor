@@ -40,7 +40,7 @@ export function OutlinePanel() {
             key={`${h.id}-${i}`}
             type="button"
             className={cn(
-              "block w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-accent",
+              "block w-full truncate rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent/80",
               h.level === 1 && "font-semibold",
               h.level === 2 && "pl-4",
               h.level === 3 && "pl-6 text-muted-foreground",
