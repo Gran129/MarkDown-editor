@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Save,
   FileSearch,
+  Download,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ export function TopBar() {
   const activeTabPath = useAppStore((s) => s.activeTabPath);
   const activeTab = useAppStore((s) => s.tabs.find((t) => t.path === s.activeTabPath));
   const saveTab = useAppStore((s) => s.saveTab);
+  const openExportDialog = useAppStore((s) => s.openExportDialog);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -124,6 +126,18 @@ export function TopBar() {
         {activeTab?.isDirty && (
           <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="未保存" />
         )}
+      </Button>
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 gap-1 text-xs"
+        disabled={!activeTabPath}
+        title="导出 (Ctrl+Shift+E)"
+        onClick={() => activeTabPath && openExportDialog(activeTabPath)}
+      >
+        <Download className="h-3.5 w-3.5" />
+        导出
       </Button>
 
       <IconButton onClick={() => void handleDailyNote()} title="今日日记">

@@ -191,6 +191,7 @@ export function HelpDialog() {
 
   const shortcuts = [
     ["Ctrl+S", "保存为加密 .mdte 笔记"],
+    ["Ctrl+Shift+E", "导出笔记（Markdown 或加密 .mdte）"],
     ["Ctrl+O", "快速切换"],
     ["Ctrl+H", "查找与替换（编辑视图）"],
     ["Ctrl+Shift+F", "全文搜索"],

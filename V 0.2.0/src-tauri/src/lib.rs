@@ -57,6 +57,7 @@ pub fn run() {
             commands::copy_file,
             commands::copy_into_note_resources,
             commands::open_path,
+            commands::export_note,
             updater::get_app_edition_info_cmd,
             updater::check_for_updates,
             updater::start_update_download,

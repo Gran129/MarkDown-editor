@@ -162,3 +162,14 @@ export async function copyIntoNoteResources(
 export async function openPath(path: string): Promise<void> {
   return invoke("open_path", { path });
 }
+
+export type NoteExportFormat = "markdown" | "encrypted";
+
+export async function exportNote(
+  sourcePath: string,
+  destPath: string,
+  content: string,
+  format: NoteExportFormat,
+): Promise<string> {
+  return invoke<string>("export_note", { sourcePath, destPath, content, format });
+}

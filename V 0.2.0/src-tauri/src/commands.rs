@@ -453,3 +453,32 @@ pub fn open_path(path: String) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[tauri::command]
+pub fn export_note(
+    state: State<AppState>,
+    source_path: String,
+    dest_path: String,
+    content: String,
+    format: String,
+) -> Result<String, String> {
+    let vault = state
+        .vault_path
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone());
+    let source = PathBuf::from(&source_path);
+    let source_ref = if source_path.trim().is_empty() || !source.exists() {
+        None
+    } else {
+        Some(source.as_path())
+    };
+    let dest = crate::mde::export_note_to(
+        source_ref,
+        Path::new(&dest_path),
+        &content,
+        &format,
+        vault.as_deref().map(Path::new),
+    )?;
+    Ok(dest.to_string_lossy().into_owned())
+}

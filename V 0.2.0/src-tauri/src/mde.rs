@@ -655,6 +655,35 @@ pub fn save_native_note(
     Ok(dest)
 }
 
+/// Copy a note to a user-chosen path without changing the vault original.
+/// `format` is `"markdown"` (plaintext `.md`) or `"encrypted"` (`.mdte` package).
+pub fn export_note_to(
+    source_path: Option<&Path>,
+    dest: &Path,
+    markdown: &str,
+    format: &str,
+    vault_root: Option<&Path>,
+) -> Result<PathBuf, String> {
+    match format {
+        "markdown" => {
+            let dest = dest.with_extension("md");
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            fs::write(&dest, markdown).map_err(|e| e.to_string())?;
+            Ok(dest)
+        }
+        "encrypted" => {
+            let dest = dest.with_extension(NATIVE_EXT);
+            let md_name = suggested_markdown_name(Some(&dest), "note");
+            let bytes = export_package_bytes(&md_name, markdown, source_path, vault_root)?;
+            write_mde_file(&dest, &bytes)?;
+            Ok(dest)
+        }
+        _ => Err("未知导出格式，请选择 Markdown 或加密格式".to_string()),
+    }
+}
+
 pub fn suggested_markdown_name(source_path: Option<&Path>, fallback: &str) -> String {
     source_path
         .and_then(|p| p.file_stem())
@@ -765,6 +794,35 @@ mod tests {
 
         let rel2 = copy_into_note_resources(&note, &src).expect("copy duplicate");
         assert_eq!(rel2, ".resources/slides-2.pptx");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn export_markdown_is_plaintext_encrypted_is_mde1() {
+        let dir = std::env::temp_dir().join(format!("mdte-export-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("temp dir");
+        let markdown = "# Hello\n\nexported body\n";
+
+        let md_dest = export_note_to(None, &dir.join("note.mdte"), markdown, "markdown", None)
+            .expect("markdown export");
+        assert_eq!(md_dest.extension().and_then(|e| e.to_str()), Some("md"));
+        assert_eq!(fs::read_to_string(&md_dest).expect("read md"), markdown);
+        let md_bytes = fs::read(&md_dest).expect("md bytes");
+        assert_ne!(&md_bytes[0..4], b"MDE1");
+
+        let enc_dest = export_note_to(None, &dir.join("note.md"), markdown, "encrypted", None)
+            .expect("encrypted export");
+        assert_eq!(enc_dest.extension().and_then(|e| e.to_str()), Some("mdte"));
+        let enc_bytes = fs::read(&enc_dest).expect("enc bytes");
+        assert_eq!(&enc_bytes[0..4], b"MDE1");
+        assert_ne!(&enc_bytes[0..2], b"PK");
+        let decoded = decode_mde(&enc_bytes).expect("decode export");
+        assert!(decoded.markdown.contains("exported body"));
+
+        let err = export_note_to(None, &dir.join("bad"), markdown, "pdf", None).unwrap_err();
+        assert!(err.contains("未知导出格式"));
 
         let _ = fs::remove_dir_all(&dir);
     }
