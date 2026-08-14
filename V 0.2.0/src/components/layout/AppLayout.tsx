@@ -21,13 +21,20 @@ import { SearchDialog, QuickSwitcherDialog } from "@/components/search/SearchDia
 import { SettingsDialog, HelpDialog } from "@/components/settings/SettingsDialog";
 import { useAppStore } from "@/stores/app-store";
 import { resolveNotePath, createFile, revealInExplorer, listRecentVaults } from "@/lib/tauri-api";
+import {
+  isAbsoluteFilePath,
+  isNoteFileName,
+  nativeNoteFileName,
+  resolveNoteMediaFile,
+  stripNoteExtension,
+} from "@/lib/note-format";
 import type { VaultInfo } from "@/lib/types";
 
 function flattenNoteNames(nodes: import("@/lib/types").FileNode[]): string[] {
   const names: string[] = [];
   for (const n of nodes) {
     if (n.is_dir && n.children) names.push(...flattenNoteNames(n.children));
-    else if (!n.is_dir && n.name.endsWith(".md")) names.push(n.name.replace(/\.md$/i, ""));
+    else if (!n.is_dir && isNoteFileName(n.name)) names.push(stripNoteExtension(n.name));
   }
   return names;
 }
@@ -63,10 +70,10 @@ export function AppLayout() {
     } else if (viewMode === "reading") {
       return;
     } else if (window.confirm(`笔记「${target}」不存在，是否创建？`)) {
-      const newPath = `${vaultPath}/${target}.md`;
-      await createFile(newPath, `# ${target}\n`);
+      const newPath = `${vaultPath}/${nativeNoteFileName(target)}`;
+      const created = await createFile(newPath, `# ${target}\n`);
       await refreshFileTree();
-      await openFile(newPath);
+      await openFile(created);
     }
   };
 
@@ -74,13 +81,13 @@ export function AppLayout() {
     if (!vaultPath) return;
     const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(target);
     if (isImage) {
-      const abs = /^([a-zA-Z]:[\\/]|\/)/.test(target)
+      const abs = isAbsoluteFilePath(target)
         ? target
-        : `${vaultPath}/${target}`.replace(/\\/g, "/");
+        : resolveNoteMediaFile(activeTabPath, vaultPath, target);
       await revealInExplorer(abs);
       return;
     }
-    await handleWikiLinkClick(target.replace(/\.md$/i, ""));
+    await handleWikiLinkClick(stripNoteExtension(target));
   };
 
   const persistSidebarWidths = (left: number, right: number) => {

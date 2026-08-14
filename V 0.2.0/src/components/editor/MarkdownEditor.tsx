@@ -1,4 +1,6 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
@@ -35,6 +37,7 @@ import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { saveDraft } from "@/lib/tauri-api";
 import { resolveLinkTarget, sanitizeBrokenWikiLinksInMarkdown } from "@/lib/link-attrs";
+import { isRemoteMedia, resolveNoteMediaFile } from "@/lib/note-format";
 import { preprocessMarkdown, postprocessMarkdown } from "@/lib/markdown-transform";
 import { syncParagraphBlocksInMarkdown } from "@/lib/block-markdown";
 import { refreshSameFileBlockReferences, refreshSyncedBlockReferences } from "@/lib/block-sync";
@@ -92,6 +95,8 @@ export function MarkdownEditor({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blockSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const pathRef = useRef(path);
+  pathRef.current = path;
 
   const getMarkdownFromEditor = useCallback((ed: Editor) => {
     const storage = ed.storage as { markdown: { getMarkdown: () => string } };
@@ -122,7 +127,28 @@ export function MarkdownEditor({
         openOnClick: false,
         HTMLAttributes: { class: "editor-link", rel: "noopener noreferrer" },
       }),
-      Image,
+      Image.extend({
+        renderHTML({ HTMLAttributes }) {
+          const src = typeof HTMLAttributes.src === "string" ? HTMLAttributes.src : "";
+          const resolved = (() => {
+            if (!src || isRemoteMedia(src)) return src;
+            const abs = resolveNoteMediaFile(
+              pathRef.current,
+              useAppStore.getState().vaultPath,
+              src,
+            );
+            try {
+              return convertFileSrc(abs);
+            } catch {
+              return abs;
+            }
+          })();
+          return [
+            "img",
+            mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { src: resolved }),
+          ];
+        },
+      }),
       Placeholder.configure({ placeholder: "开始写作…" }),
       Table.configure({ resizable: true }),
       TableRow,

@@ -33,6 +33,9 @@
 - 崩溃恢复（draft 缓存）
 - **v0.2.0** 双发行模式：便携版本地版（离线、不检测更新）/ 安装包联网版（联网检查 GitHub 更新，离线时自动跳过）
 - 启动时可记住默认 Vault；欢迎页列出最近打开的知识库
+- **`.mdte` 原生加密笔记**（MarkDown Tardis Encrypted）：本软件保存、新建、日记、Wiki 创建的笔记一律写成 `.mdte`。文件内部是 Markdown + 隐藏 `.resources`（本地图片/附件）的压缩包，再用 AES-256-GCM + Argon2id 封装。统一密钥为应用内置口令 `Tardis`。仍可打开旧的明文 `.md` 与此前导出的 `.mde`；保存后会转换成 `.mdte`。
+
+> 选择 `.mdte` 是为了避开已被占用的 `.mde`（Microsoft Access 编译数据库、GRAPHISOFT Archicad Education 模块）。磁盘头仍使用魔数 `MDE1`，所以旧 `.mde` 包可以继续打开。
 
 > 插件系统与移动端仍在规划中，当前版本未交付。详见 `docs/PLUGINS.md`、`docs/MOBILE.md`。
 
@@ -96,7 +99,7 @@ npm run build:win
 
 | 快捷键 | 功能 |
 |--------|------|
-| Ctrl+S | 保存 |
+| Ctrl+S | 保存为加密 .mdte 笔记 |
 | Ctrl+O | 快速切换 |
 | Ctrl+Shift+F | 全文搜索 |
 | Ctrl+/ | 快捷键帮助 |
@@ -117,6 +120,7 @@ npm run build:win
 ├── src-tauri/           # Rust 后端
 │   └── src/
 │       ├── commands.rs  # IPC 命令
+│       ├── mde.rs       # .mdte 原生加密笔记
 │       ├── vault.rs     # Vault 扫描
 │       ├── search.rs    # FTS5 索引
 │       └── watcher.rs   # 文件监听
@@ -180,6 +184,7 @@ npm run build:win
 - 主题选择「跟随系统」时会随系统深浅色切换
 - macOS/Linux 安装版也能识别以便检查更新
 - 增加语法 / 阅读 / 编辑三种视图，可从源码切换到预览或 Word 式编辑
+- 原生笔记格式改为 `.mdte`：保存即加密（Markdown + `.resources`，AES-256-GCM / Argon2id）；旧 `.md` / `.mde` 打开后保存会转换
 
 ### v0.1.0
 

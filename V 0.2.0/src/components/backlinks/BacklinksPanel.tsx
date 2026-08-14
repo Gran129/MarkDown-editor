@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getBacklinks, resolveNotePath, createFile } from "@/lib/tauri-api";
 import { extractWikiLinks } from "@/lib/markdown";
+import { nativeNoteFileName } from "@/lib/note-format";
 import { isBrokenLinkValue } from "@/lib/link-attrs";
 import type { BacklinkResult } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
@@ -35,10 +36,10 @@ export function LinksPanel() {
     if (path) {
       await openFile(path);
     } else if (window.confirm(`笔记「${link}」不存在，是否创建？`)) {
-      const newPath = `${vaultPath}/${link}.md`;
-      await createFile(newPath, `# ${link}\n`);
+      const newPath = `${vaultPath}/${nativeNoteFileName(link)}`;
+      const created = await createFile(newPath, `# ${link}\n`);
       await refreshFileTree();
-      await openFile(newPath);
+      await openFile(created);
     }
   };
 

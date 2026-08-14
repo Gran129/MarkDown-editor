@@ -17,6 +17,7 @@ import { ViewModeSwitch } from "@/components/editor/ViewModeSwitch";
 import { useAppStore } from "@/stores/app-store";
 import { createFile } from "@/lib/tauri-api";
 import { formatDailyNoteName } from "@/lib/markdown";
+import { stripNoteExtension } from "@/lib/note-format";
 
 function IconButton({
   onClick,
@@ -76,9 +77,12 @@ export function TopBar() {
     const folder = settings.daily_notes_folder;
     const fileName = formatDailyNoteName();
     const path = `${vaultPath}/${folder}/${fileName}`.replace(/\\/g, "/");
-    const title = fileName.replace(/\.md$/i, "");
+    const title = stripNoteExtension(fileName);
     try {
-      await createFile(path, settings.daily_notes_template || `# ${title}\n`);
+      const created = await createFile(path, settings.daily_notes_template || `# ${title}\n`);
+      await refreshFileTree();
+      await openFile(created);
+      return;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes("已存在")) {

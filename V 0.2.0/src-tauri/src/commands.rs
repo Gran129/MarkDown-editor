@@ -162,23 +162,43 @@ pub fn list_files(vault_path: String) -> Result<Vec<FileNode>, String> {
 
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
-    fs::read_to_string(&path).map_err(|e| e.to_string())
+    crate::mde::open_note(Path::new(&path))
 }
 
 #[tauri::command]
-pub fn write_file(path: String, content: String) -> Result<(), String> {
-    if let Some(parent) = Path::new(&path).parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+pub fn write_file(
+    state: State<AppState>,
+    path: String,
+    content: String,
+) -> Result<String, String> {
+    let vault = state
+        .vault_path
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone());
+    let source = PathBuf::from(&path);
+    let dest = crate::mde::save_native_note(
+        &source,
+        &content,
+        vault.as_deref().map(Path::new),
+    )?;
+    if dest != source && source.is_file() {
+        let _ = fs::remove_file(&source);
     }
-    fs::write(&path, content).map_err(|e| e.to_string())
+    Ok(dest.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
-pub fn create_file(path: String, content: String) -> Result<(), String> {
-    if Path::new(&path).exists() {
+pub fn create_file(
+    state: State<AppState>,
+    path: String,
+    content: String,
+) -> Result<String, String> {
+    let dest = crate::mde::with_native_ext(Path::new(&path));
+    if dest.exists() {
         return Err("文件已存在".to_string());
     }
-    write_file(path, content)
+    write_file(state, dest.to_string_lossy().into_owned(), content)
 }
 
 #[tauri::command]
@@ -188,12 +208,22 @@ pub fn create_folder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
-    fs::rename(&old_path, &new_path).map_err(|e| e.to_string())
+    let old = PathBuf::from(&old_path);
+    let new = PathBuf::from(&new_path);
+    fs::rename(&old, &new).map_err(|e| e.to_string())?;
+    rename_companion_work_dir(&old, &new);
+    Ok(())
 }
 
 #[tauri::command]
 pub fn delete_path(path: String) -> Result<(), String> {
     let p = Path::new(&path);
+    if p.is_file() {
+        let work = crate::mde::work_dir(p);
+        if work.exists() {
+            let _ = fs::remove_dir_all(&work);
+        }
+    }
     if p.is_dir() {
         fs::remove_dir_all(p).map_err(|e| e.to_string())
     } else {
@@ -203,7 +233,22 @@ pub fn delete_path(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn move_path(source: String, destination: String) -> Result<(), String> {
-    fs::rename(&source, &destination).map_err(|e| e.to_string())
+    let old = PathBuf::from(&source);
+    let new = PathBuf::from(&destination);
+    fs::rename(&old, &new).map_err(|e| e.to_string())?;
+    rename_companion_work_dir(&old, &new);
+    Ok(())
+}
+
+fn rename_companion_work_dir(old: &Path, new: &Path) {
+    if !crate::mde::is_note_file(old) {
+        return;
+    }
+    let old_work = crate::mde::work_dir(old);
+    let new_work = crate::mde::work_dir(new);
+    if old_work.exists() && old_work != new_work {
+        let _ = fs::rename(old_work, new_work);
+    }
 }
 
 #[tauri::command]

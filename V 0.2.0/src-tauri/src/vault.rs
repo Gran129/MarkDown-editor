@@ -63,7 +63,7 @@ fn scan_dir(dir: &Path) -> Vec<FileNode> {
                 is_dir: true,
                 children: Some(children),
             });
-        } else if name.ends_with(".md") {
+        } else if crate::mde::is_note_file(&path) {
             nodes.push(FileNode {
                 name,
                 path: path.to_string_lossy().to_string(),
@@ -75,22 +75,51 @@ fn scan_dir(dir: &Path) -> Vec<FileNode> {
     nodes
 }
 
-pub fn resolve_note(vault_path: &str, note_name: &str) -> Option<String> {
-    let target = note_name.to_lowercase();
-    for entry in WalkDir::new(vault_path)
+fn walk_visible_files(vault_path: &str) -> impl Iterator<Item = walkdir::DirEntry> {
+    WalkDir::new(vault_path)
         .into_iter()
+        .filter_entry(|e| e.depth() == 0 || !e.file_name().to_string_lossy().starts_with('.'))
         .filter_map(|e| e.ok())
-    {
-        if entry.file_type().is_file() {
-            let path = entry.path();
-            if let Some(stem) = path.file_stem() {
-                if stem.to_string_lossy().to_lowercase() == target {
-                    return Some(path.to_string_lossy().to_string());
-                }
-            }
+        .filter(|e| e.file_type().is_file())
+}
+
+fn strip_note_extension(name: &str) -> String {
+    let lower = name.to_ascii_lowercase();
+    for ext in [".mdte", ".mde", ".md"] {
+        if lower.ends_with(ext) {
+            return name[..name.len() - ext.len()].to_string();
         }
     }
-    None
+    name.to_string()
+}
+
+pub fn resolve_note(vault_path: &str, note_name: &str) -> Option<String> {
+    let target = strip_note_extension(note_name).to_lowercase();
+    let mut best: Option<(u8, PathBuf)> = None;
+    for entry in walk_visible_files(vault_path) {
+        let path = entry.path();
+        if !crate::mde::is_note_file(path) {
+            continue;
+        }
+        let Some(stem) = path.file_stem() else {
+            continue;
+        };
+        if stem.to_string_lossy().to_lowercase() != target {
+            continue;
+        }
+        let rank = crate::mde::note_rank(path);
+        if rank == 0 {
+            return Some(path.to_string_lossy().to_string());
+        }
+        match &best {
+            None => best = Some((rank, path.to_path_buf())),
+            Some((current, _)) if rank < *current => {
+                best = Some((rank, path.to_path_buf()));
+            }
+            _ => {}
+        }
+    }
+    best.map(|(_, path)| path.to_string_lossy().to_string())
 }
 
 pub fn update_wiki_links(vault_path: &str, old_name: &str, new_name: &str) -> Result<(), String> {
@@ -99,38 +128,30 @@ pub fn update_wiki_links(vault_path: &str, old_name: &str, new_name: &str) -> Re
         regex::escape(old_name)
     ))
     .map_err(|e| e.to_string())?;
+    let vault = Path::new(vault_path);
 
-    for entry in WalkDir::new(vault_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        if !entry.file_type().is_file() {
-            continue;
-        }
-        let path = entry.path();
-        if !path.extension().map(|e| e == "md").unwrap_or(false) {
-            continue;
-        }
-        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    for path in collect_md_files(vault_path) {
+        let content = match crate::mde::read_note_markdown(&path) {
+            Ok(text) => text,
+            Err(_) => continue,
+        };
         let new_content = re.replace_all(&content, |caps: &regex::Captures| {
             let alias = caps.get(2).map(|m| m.as_str()).unwrap_or("");
             format!("[[{}{}]]", new_name, alias)
         });
         if new_content != content {
-            fs::write(path, new_content.as_ref()).map_err(|e| e.to_string())?;
+            let dest = crate::mde::save_native_note(&path, new_content.as_ref(), Some(vault))?;
+            if dest != path && path.exists() {
+                let _ = fs::remove_file(&path);
+            }
         }
     }
     Ok(())
 }
 
 pub fn collect_md_files(vault_path: &str) -> Vec<PathBuf> {
-    WalkDir::new(vault_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.file_type().is_file()
-                && e.path().extension().map(|ext| ext == "md").unwrap_or(false)
-        })
+    walk_visible_files(vault_path)
+        .filter(|e| crate::mde::is_note_file(e.path()))
         .map(|e| e.path().to_path_buf())
         .collect()
 }
@@ -173,7 +194,7 @@ pub fn get_backlinks_from_vault(vault_path: &str, note_name: &str) -> Vec<Backli
     let mut results = Vec::new();
 
     for path in collect_md_files(vault_path) {
-        let content = fs::read_to_string(&path).unwrap_or_default();
+        let content = crate::mde::read_note_markdown(&path).unwrap_or_default();
         let body = strip_frontmatter(&content);
         for (line_num, line) in body.lines().enumerate() {
             for cap in link_re.captures_iter(line) {

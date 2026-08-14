@@ -190,7 +190,7 @@ export function HelpDialog() {
   const setHelpOpen = useAppStore((s) => s.setHelpOpen);
 
   const shortcuts = [
-    ["Ctrl+S", "保存"],
+    ["Ctrl+S", "保存为加密 .mdte 笔记"],
     ["Ctrl+O", "快速切换"],
     ["Ctrl+H", "查找与替换（编辑视图）"],
     ["Ctrl+Shift+F", "全文搜索"],

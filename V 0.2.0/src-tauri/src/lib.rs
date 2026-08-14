@@ -1,4 +1,5 @@
 mod commands;
+mod mde;
 mod search;
 mod updater;
 mod vault;

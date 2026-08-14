@@ -238,13 +238,41 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const tab = get().tabs.find((t) => t.path === path);
     if (!tab) return;
     const full = serializeFrontmatter(tab.frontmatter, tab.content);
-    await writeFile(path, full);
+    const savedPath = await writeFile(path, full);
     await clearDraft(path);
-    get().markTabDirty(path, false);
+    if (savedPath !== path) {
+      await clearDraft(savedPath);
+    }
+    let nextContent = tab.content;
+    let nextFrontmatter = tab.frontmatter;
+    try {
+      const raw = await readFile(savedPath);
+      const parsed = parseFrontmatter(raw);
+      nextContent = parsed.body;
+      nextFrontmatter = parsed.frontmatter;
+    } catch {
+      /* keep the in-memory document if re-read fails */
+    }
+    set({
+      tabs: get().tabs.map((item) =>
+        item.path === path
+          ? {
+              ...item,
+              path: savedPath,
+              title: getNoteTitle(savedPath, nextFrontmatter),
+              content: nextContent,
+              frontmatter: nextFrontmatter,
+              isDirty: false,
+            }
+          : item,
+      ),
+      activeTabPath: get().activeTabPath === path ? savedPath : get().activeTabPath,
+    });
     const vault = get().vaultPath;
     if (vault) {
       await indexVault(vault);
       await get().refreshVaultTags();
+      await get().refreshFileTree();
     }
     return;
   },

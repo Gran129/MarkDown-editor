@@ -29,12 +29,12 @@ export async function readFile(path: string): Promise<string> {
   return invoke<string>("read_file", { path });
 }
 
-export async function writeFile(path: string, content: string): Promise<void> {
-  return invoke("write_file", { path, content });
+export async function writeFile(path: string, content: string): Promise<string> {
+  return invoke<string>("write_file", { path, content });
 }
 
-export async function createFile(path: string, content?: string): Promise<void> {
-  return invoke("create_file", { path, content: content ?? "" });
+export async function createFile(path: string, content?: string): Promise<string> {
+  return invoke<string>("create_file", { path, content: content ?? "" });
 }
 
 export async function createFolder(path: string): Promise<void> {
