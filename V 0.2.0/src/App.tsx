@@ -82,6 +82,21 @@ function useVaultWatcher() {
   }, [refreshFileTree, refreshVaultTags]);
 }
 
+function useSystemThemeSync() {
+  const theme = useAppStore((s) => s.theme);
+
+  useEffect(() => {
+    if (theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      document.documentElement.classList.toggle("dark", media.matches);
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [theme]);
+}
+
 export default function App() {
   const init = useAppStore((s) => s.init);
 
@@ -91,6 +106,7 @@ export default function App() {
 
   useKeyboardShortcuts();
   useVaultWatcher();
+  useSystemThemeSync();
 
   return (
     <>
