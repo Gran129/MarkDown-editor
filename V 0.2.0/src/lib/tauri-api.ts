@@ -113,16 +113,6 @@ export async function clearDraft(path: string): Promise<void> {
   return invoke("clear_draft", { path });
 }
 
-export async function listPlugins(): Promise<
-  import("./types").PluginManifest[]
-> {
-  return invoke("list_plugins");
-}
-
-export async function enablePlugin(id: string, enabled: boolean): Promise<void> {
-  return invoke("enable_plugin", { id, enabled });
-}
-
 export async function getAppEditionInfo(): Promise<
   import("./types").AppEditionInfo
 > {

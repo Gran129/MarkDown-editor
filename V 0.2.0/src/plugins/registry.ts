@@ -1,12 +1,6 @@
 /**
- * Plugin API - reserved for Phase 7
- *
- * Plugins can register:
- * - Editor TipTap extensions
- * - Command palette commands
- * - Settings panel sections
- *
- * Loading: Tauri sidecar or WASM sandbox (future)
+ * Plugin API reserved for a later release.
+ * Not wired into the UI in v0.2.0 — do not present this as a shipping feature.
  */
 
 export interface PluginCommand {
@@ -38,20 +32,3 @@ export function getPlugin(id: string): PluginDefinition | undefined {
 export function getAllPlugins(): PluginDefinition[] {
   return [...registry.values()];
 }
-
-/** Example built-in plugin stub */
-export const examplePlugin: PluginDefinition = {
-  id: "example",
-  name: "示例插件",
-  version: "0.1.0",
-  description: "插件系统占位示例",
-  commands: [
-    {
-      id: "example.hello",
-      label: "示例：Hello",
-      handler: () => {
-        console.info("Hello from plugin system");
-      },
-    },
-  ],
-};

@@ -29,8 +29,8 @@
 - 深色 / 浅色主题、设置面板、快捷键
 - 崩溃恢复（draft 缓存）
 - **v0.2.0** 双发行模式：便携版本地版（离线、不检测更新）/ 安装包联网版（联网检查 GitHub 更新，离线时自动跳过）
-- 插件 API 预留（后期扩展）
-- 移动端规划（Tauri Mobile，后期）
+
+> 插件系统与移动端仍在规划中，当前版本未交付。详见 `docs/PLUGINS.md`、`docs/MOBILE.md`。
 
 ## 技术栈
 
@@ -166,7 +166,7 @@ npm run build:win
 - TipTap WYSIWYG 编辑器与格式化工具栏
 - Wiki 双向链接、反向链接 / 出链面板
 - 标签系统与全文搜索（SQLite FTS5）、Quick Switcher
-- Daily Notes、关系图谱 Graph View
+- Daily Notes、关系图谱 Graph View（v0.2.0 已移除）
 - 深色 / 浅色主题、设置面板、快捷键、崩溃恢复（draft 缓存）
 - Windows NSIS 安装包与便携版
 

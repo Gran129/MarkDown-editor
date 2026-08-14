@@ -179,13 +179,3 @@ export function HelpDialog() {
     </Dialog>
   );
 }
-
-export function PluginsPanel() {
-  return (
-    <div className="p-4 text-sm text-muted-foreground">
-      <h3 className="mb-2 font-semibold text-foreground">插件系统</h3>
-      <p>插件 API 已预留。后续版本将支持本地安装 .zip 插件包。</p>
-      <p className="mt-2 text-xs">架构：Tauri sidecar / WASM 沙箱加载</p>
-    </div>
-  );
-}
