@@ -6,8 +6,8 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
-  MoreHorizontal,
   Pencil,
+  RefreshCw,
   Trash2,
   ExternalLink,
 } from "lucide-react";
@@ -281,6 +281,25 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
   );
 }
 
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/").toLowerCase();
+}
+
+function filterTreeByTag(nodes: FileNode[], matchingPaths: Set<string>): FileNode[] {
+  const result: FileNode[] = [];
+  for (const node of nodes) {
+    if (node.is_dir) {
+      const children = filterTreeByTag(node.children ?? [], matchingPaths);
+      if (children.length > 0) {
+        result.push({ ...node, children });
+      }
+    } else if (matchingPaths.has(normalizePath(node.path))) {
+      result.push(node);
+    }
+  }
+  return result;
+}
+
 export function FileTree({ nodes, vaultPath, depth = 0 }: FileTreeProps) {
   return (
     <ScrollArea className="h-full">
@@ -296,6 +315,9 @@ export function FileTree({ nodes, vaultPath, depth = 0 }: FileTreeProps) {
 export function FileTreeSidebar() {
   const vaultPath = useAppStore((s) => s.vaultPath);
   const fileTree = useAppStore((s) => s.fileTree);
+  const tagFilter = useAppStore((s) => s.tagFilter);
+  const vaultTags = useAppStore((s) => s.vaultTags);
+  const setTagFilter = useAppStore((s) => s.setTagFilter);
   const openVault = useAppStore((s) => s.openVault);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const [newNoteOpen, setNewNoteOpen] = useState(false);
@@ -317,6 +339,11 @@ export function FileTreeSidebar() {
     setNewNoteName("");
     await refreshFileTree();
   };
+
+  const matchingPaths = new Set(
+    (vaultTags.find((entry) => entry.tag === tagFilter)?.paths ?? []).map(normalizePath),
+  );
+  const visibleTree = tagFilter ? filterTreeByTag(fileTree, matchingPaths) : fileTree;
 
   if (!vaultPath) {
     return (
@@ -344,16 +371,37 @@ export function FileTreeSidebar() {
               setNewNoteName("");
               setNewNoteOpen(true);
             }}
+            title="新建笔记"
+            aria-label="新建笔记"
           >
             <FileText className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void refreshFileTree()}>
-            <MoreHorizontal className="h-3.5 w-3.5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            title="刷新文件树"
+            aria-label="刷新文件树"
+            onClick={() => void refreshFileTree()}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <FileTree nodes={fileTree} vaultPath={vaultPath} />
+        {tagFilter && (
+          <div className="flex items-center justify-between px-3 py-1.5 text-xs text-muted-foreground">
+            <span>筛选 #{tagFilter}</span>
+            <button type="button" className="hover:text-foreground" onClick={() => setTagFilter(null)}>
+              清除
+            </button>
+          </div>
+        )}
+        {tagFilter && visibleTree.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">没有带该标签的笔记</p>
+        ) : (
+          <FileTree nodes={visibleTree} vaultPath={vaultPath} />
+        )}
       </div>
 
       <Dialog open={newNoteOpen} onOpenChange={setNewNoteOpen}>

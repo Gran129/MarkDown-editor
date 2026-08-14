@@ -1,5 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 
+import { EmbedView } from "@/components/editor/EmbedView";
 import { parseEmbedText, resolveLinkTarget } from "@/lib/link-attrs";
 
 declare module "@tiptap/core" {
@@ -53,6 +55,10 @@ export const Embed = Node.create({
       }),
       target ? `![[${target}]]` : "![[]]",
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(EmbedView, { as: "span" });
   },
 
   addCommands() {

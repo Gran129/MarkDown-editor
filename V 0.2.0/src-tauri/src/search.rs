@@ -137,6 +137,34 @@ impl SearchIndex {
         Ok(results)
     }
 
+    pub fn list_tags(&self, vault_path: &str) -> Result<Vec<crate::commands::TagInfo>, String> {
+        let conn = self.conn.as_ref().ok_or("搜索索引未初始化")?;
+        let mut stmt = conn
+            .prepare("SELECT path, tags FROM documents WHERE vault_path = ?1")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![vault_path], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|e| e.to_string())?;
+
+        let mut map: std::collections::BTreeMap<String, Vec<String>> =
+            std::collections::BTreeMap::new();
+        for row in rows.flatten() {
+            let (path, tags) = row;
+            for tag in tags.split_whitespace() {
+                if tag.is_empty() {
+                    continue;
+                }
+                map.entry(tag.to_string()).or_default().push(path.clone());
+            }
+        }
+        Ok(map
+            .into_iter()
+            .map(|(tag, paths)| crate::commands::TagInfo { tag, paths })
+            .collect())
+    }
+
     pub fn get_backlinks(
         &self,
         vault_path: &str,

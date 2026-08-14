@@ -42,12 +42,9 @@ export interface TabState {
   frontmatter: Record<string, unknown>;
 }
 
-export interface PluginManifest {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  enabled: boolean;
+export interface TagInfo {
+  tag: string;
+  paths: string[];
 }
 
 export type AppEdition = "portable" | "installed";

@@ -205,8 +205,12 @@ fn is_registered_installation(exe: &Path) -> bool {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn is_registered_installation(_exe: &Path) -> bool {
-    false
+fn is_registered_installation(exe: &Path) -> bool {
+    let path = exe.to_string_lossy();
+    path.contains("/Applications/")
+        || path.contains(".app/Contents/MacOS/")
+        || path.starts_with("/usr/")
+        || path.contains("/opt/")
 }
 
 pub fn is_network_online() -> bool {

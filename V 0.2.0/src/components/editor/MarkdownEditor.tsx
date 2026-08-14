@@ -164,7 +164,7 @@ export function MarkdownEditor({
         class: "tiptap prose prose-sm max-w-none focus:outline-none",
         style: `font-size: ${fontSize}px; --editor-line-height: ${lineHeight}`,
       },
-      handleClick: (_view, _pos, event) => {
+      handleClick: (view, _pos, event) => {
         const target = event.target as HTMLElement;
         const wikiEl = target.closest("[data-wiki-link]");
         if (wikiEl) {
@@ -192,10 +192,28 @@ export function MarkdownEditor({
         }
         const blockRefEl = target.closest("[data-block-ref]");
         if (blockRefEl) {
+          let sourceFile = blockRefEl.getAttribute("data-source-file") ?? "";
+          let blockId = blockRefEl.getAttribute("data-block-id") ?? "";
+          let sync = blockRefEl.getAttribute("data-sync") === "true";
+          try {
+            const pos = view.posAtDOM(blockRefEl, 0);
+            const $pos = view.state.doc.resolve(pos);
+            for (let depth = $pos.depth; depth >= 0; depth--) {
+              const node = $pos.node(depth);
+              if (node.type.name === "blockReference") {
+                sourceFile = (node.attrs.sourceFile as string) || sourceFile;
+                blockId = (node.attrs.blockId as string) || blockId;
+                sync = Boolean(node.attrs.sync);
+                break;
+              }
+            }
+          } catch {
+            /* fall back to DOM attributes */
+          }
           setSelectedBlockRef({
-            sourceFile: blockRefEl.getAttribute("data-source-file") ?? "",
-            blockId: blockRefEl.getAttribute("data-block-id") ?? "",
-            sync: blockRefEl.getAttribute("data-sync") === "true",
+            sourceFile,
+            blockId,
+            sync,
             nodePos: null,
           });
           return true;
@@ -311,7 +329,11 @@ export function MarkdownEditor({
       <TableMenu editor={editor} />
       <div ref={editorContainerRef} className="relative flex-1 overflow-auto">
         <EditorContent editor={editor} className="h-full" />
-        <LinkPreview editor={editor} containerRef={editorContainerRef} />
+        <LinkPreview
+          editor={editor}
+          containerRef={editorContainerRef}
+          onInternalNavigate={onWikiLinkClick}
+        />
       </div>
     </div>
   );
