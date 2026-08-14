@@ -53,8 +53,6 @@ pub fn run() {
             commands::clear_draft,
             commands::list_plugins,
             commands::enable_plugin,
-            commands::export_mde,
-            commands::import_mde,
             updater::get_app_edition_info_cmd,
             updater::check_for_updates,
             updater::start_update_download,

@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
-  Archive,
   Folder,
   FolderOpen,
   FolderPlus,
@@ -42,6 +41,12 @@ import {
   updateWikiLinksOnRename,
 } from "@/lib/tauri-api";
 import { useAppStore } from "@/stores/app-store";
+import {
+  extensionOf,
+  isNoteFileName,
+  nativeNoteFileName,
+  stripNoteExtension,
+} from "@/lib/note-format";
 
 interface FileTreeProps {
   nodes: FileNode[];
@@ -105,7 +110,7 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
     switch (prompt.kind) {
       case "new-note": {
         const base = getParentPath(node);
-        await createFile(`${base}/${value}.md`, `# ${value}\n`);
+        await createFile(`${base}/${nativeNoteFileName(value)}`, `# ${value}\n`);
         break;
       }
       case "new-folder": {
@@ -116,14 +121,12 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
       case "rename": {
         if (value === node.name) break;
         const suffix =
-          !isDir && node.name.toLowerCase().endsWith(".md") && !value.toLowerCase().endsWith(".md")
-            ? ".md"
-            : !isDir && node.name.toLowerCase().endsWith(".mde") && !value.toLowerCase().endsWith(".mde")
-              ? ".mde"
-              : "";
+          !isDir && isNoteFileName(node.name) && !isNoteFileName(value)
+            ? `.${extensionOf(node.name)}`
+            : "";
         const newPath = node.path.replace(/[/\\][^/\\]+$/, `/${value}${suffix}`);
-        const oldName = node.name.replace(/\.md$/i, "");
-        const newNoteName = value.replace(/\.md$/i, "");
+        const oldName = stripNoteExtension(node.name);
+        const newNoteName = stripNoteExtension(`${value}${suffix}`);
         await renamePath(node.path, newPath);
         if (!isDir && oldName !== newNoteName) {
           await updateWikiLinksOnRename(vaultPath, oldName, newNoteName);
@@ -166,7 +169,7 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
 
   const promptPlaceholder =
     prompt?.kind === "new-note"
-      ? "笔记名称（不含 .md）"
+      ? "笔记名称（不含后缀）"
       : prompt?.kind === "new-folder"
         ? "文件夹名称"
         : "新名称";
@@ -202,8 +205,6 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
               ) : (
                 <Folder className="h-4 w-4 shrink-0 text-primary" />
               )
-            ) : node.name.toLowerCase().endsWith(".mde") ? (
-              <Archive className="h-4 w-4 shrink-0 text-muted-foreground" />
             ) : (
               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
@@ -220,7 +221,7 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             新建文件夹
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem onSelect={() => openPrompt("rename", node.name.replace(/\.md$/i, ""))}>
+          <ContextMenuItem onSelect={() => openPrompt("rename", stripNoteExtension(node.name))}>
             <Pencil className="mr-2 h-4 w-4" />
             重命名
           </ContextMenuItem>
@@ -341,7 +342,7 @@ export function FileTreeSidebar() {
     if (!vaultPath) return;
     const name = newNoteName.trim();
     if (!name) return;
-    await createFile(`${vaultPath}/${name}.md`, `# ${name}\n`);
+    await createFile(`${vaultPath}/${nativeNoteFileName(name)}`, `# ${name}\n`);
     setNewNoteOpen(false);
     setNewNoteName("");
     await refreshFileTree();
@@ -419,7 +420,7 @@ export function FileTreeSidebar() {
           <Input
             ref={newNoteInputRef}
             value={newNoteName}
-            placeholder="笔记名称（不含 .md）"
+            placeholder="笔记名称（不含后缀）"
             onChange={(e) => setNewNoteName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleNewNote();

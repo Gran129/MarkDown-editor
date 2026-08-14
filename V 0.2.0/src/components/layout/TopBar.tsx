@@ -10,20 +10,14 @@ import {
   HelpCircle,
   Save,
   FileSearch,
-  Archive,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ViewModeSwitch } from "@/components/editor/ViewModeSwitch";
 import { useAppStore } from "@/stores/app-store";
 import { createFile } from "@/lib/tauri-api";
 import { formatDailyNoteName } from "@/lib/markdown";
+import { stripNoteExtension } from "@/lib/note-format";
 
 function IconButton({
   onClick,
@@ -70,8 +64,6 @@ export function TopBar() {
   const activeTabPath = useAppStore((s) => s.activeTabPath);
   const activeTab = useAppStore((s) => s.tabs.find((t) => t.path === s.activeTabPath));
   const saveTab = useAppStore((s) => s.saveTab);
-  const exportActiveMde = useAppStore((s) => s.exportActiveMde);
-  const importMdePackage = useAppStore((s) => s.importMdePackage);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -85,9 +77,12 @@ export function TopBar() {
     const folder = settings.daily_notes_folder;
     const fileName = formatDailyNoteName();
     const path = `${vaultPath}/${folder}/${fileName}`.replace(/\\/g, "/");
-    const title = fileName.replace(/\.md$/i, "");
+    const title = stripNoteExtension(fileName);
     try {
-      await createFile(path, settings.daily_notes_template || `# ${title}\n`);
+      const created = await createFile(path, settings.daily_notes_template || `# ${title}\n`);
+      await refreshFileTree();
+      await openFile(created);
+      return;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes("已存在")) {
@@ -130,29 +125,6 @@ export function TopBar() {
           <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="未保存" />
         )}
       </Button>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" title="加密 .mde 包">
-            <Archive className="h-3.5 w-3.5" />
-            .mde
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            disabled={!activeTabPath}
-            onClick={() => void exportActiveMde()}
-          >
-            导出当前笔记
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!vaultPath}
-            onClick={() => void importMdePackage()}
-          >
-            导入 .mde
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
 
       <IconButton onClick={() => void handleDailyNote()} title="今日日记">
         <Calendar className="h-4 w-4" />

@@ -1,5 +1,8 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
+import { isBrokenLinkValue } from "@/lib/link-attrs";
+import { nativeNoteFileName, stripNoteExtension } from "@/lib/note-format";
+
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 
 export function parseFrontmatter(content: string): {
@@ -69,10 +72,8 @@ export function getNoteTitle(
     return frontmatter.title;
   }
   const name = path.split(/[/\\]/).pop() ?? path;
-  return name.replace(/\.md$/i, "");
+  return stripNoteExtension(name);
 }
-
-import { isBrokenLinkValue } from "@/lib/link-attrs";
 
 export function extractWikiLinks(content: string): string[] {
   const regex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
@@ -99,7 +100,7 @@ export function formatDailyNoteName(date = new Date()): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}.md`;
+  return nativeNoteFileName(`${y}-${m}-${d}`);
 }
 
 export function fuzzyMatch(query: string, target: string): boolean {

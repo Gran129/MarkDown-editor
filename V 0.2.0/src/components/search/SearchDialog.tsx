@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { searchNotes } from "@/lib/tauri-api";
 import { fuzzyMatch } from "@/lib/markdown";
+import { isNoteFileName } from "@/lib/note-format";
 import type { SearchResult } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
 
@@ -140,7 +141,7 @@ function flattenMdFiles(nodes: import("@/lib/types").FileNode[]): string[] {
   for (const node of nodes) {
     if (node.is_dir && node.children) {
       result.push(...flattenMdFiles(node.children));
-    } else if (!node.is_dir && node.name.endsWith(".md")) {
+    } else if (!node.is_dir && isNoteFileName(node.name)) {
       result.push(node.path);
     }
   }

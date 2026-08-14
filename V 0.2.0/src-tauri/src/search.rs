@@ -66,7 +66,7 @@ impl SearchIndex {
         .map_err(|e| e.to_string())?;
 
         for path in collect_md_files(vault_path) {
-            let content = std::fs::read_to_string(&path).unwrap_or_default();
+            let content = crate::mde::read_note_markdown(&path).unwrap_or_default();
             let title = extract_title(&content, &path);
             let body = strip_frontmatter(&content);
             let tags = extract_tags(&content).join(" ");

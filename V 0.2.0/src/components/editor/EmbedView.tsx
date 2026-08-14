@@ -4,20 +4,11 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 
 import { parseFrontmatter } from "@/lib/markdown";
 import { resolveLinkTarget } from "@/lib/link-attrs";
+import { resolveNoteMediaFile, stripNoteExtension } from "@/lib/note-format";
 import { readFile, resolveNotePath } from "@/lib/tauri-api";
 import { useAppStore } from "@/stores/app-store";
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp)$/i;
-
-function isAbsolutePath(target: string): boolean {
-  return /^([a-zA-Z]:[\\/]|\/)/.test(target);
-}
-
-function resolveVaultFile(vaultPath: string | null, target: string): string {
-  if (/^https?:\/\//i.test(target) || isAbsolutePath(target)) return target;
-  if (!vaultPath) return target;
-  return `${vaultPath}/${target}`.replace(/\\/g, "/");
-}
 
 function toDisplaySrc(filePath: string): string {
   if (/^https?:\/\//i.test(filePath)) return filePath;
@@ -32,6 +23,7 @@ export function EmbedView({ node }: NodeViewProps) {
   const target = resolveLinkTarget(node.attrs.target);
   const size = typeof node.attrs.size === "string" ? node.attrs.size : null;
   const vaultPath = useAppStore((s) => s.vaultPath);
+  const notePath = useAppStore((s) => s.activeTabPath);
   const isImage = IMAGE_EXT.test(target);
   const [notePreview, setNotePreview] = useState<string | null>(null);
   const [noteMissing, setNoteMissing] = useState(false);
@@ -44,7 +36,7 @@ export function EmbedView({ node }: NodeViewProps) {
     }
     let cancelled = false;
     void (async () => {
-      const path = await resolveNotePath(vaultPath, target.replace(/\.md$/i, ""));
+      const path = await resolveNotePath(vaultPath, stripNoteExtension(target));
       if (cancelled) return;
       if (!path) {
         setNoteMissing(true);
@@ -76,7 +68,7 @@ export function EmbedView({ node }: NodeViewProps) {
   }
 
   if (isImage) {
-    const src = toDisplaySrc(resolveVaultFile(vaultPath, target));
+    const src = toDisplaySrc(resolveNoteMediaFile(notePath, vaultPath, target));
     return (
       <NodeViewWrapper
         as="span"

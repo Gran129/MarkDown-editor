@@ -1,6 +1,7 @@
-//! Encrypted `.mde` package: a zip of the markdown note plus a hidden `.resources`
-//! folder, wrapped in AES-256-GCM. The key is derived with Argon2id from the
-//! application-wide passphrase.
+//! Encrypted native note package (`.mdte`): a zip of the markdown note plus a
+//! hidden `.resources` folder, wrapped in AES-256-GCM. The on-disk header still
+//! uses magic `MDE1`, so leftover `.mde` exports decrypt with the same codec.
+//! The key is derived with Argon2id from the application-wide passphrase.
 
 use std::collections::HashSet;
 use std::fs;
@@ -14,6 +15,9 @@ use regex::Regex;
 use walkdir::WalkDir;
 use zip::write::FileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
+
+pub const NATIVE_EXT: &str = "mdte";
+pub const LEGACY_EXPORT_EXT: &str = "mde";
 
 const MAGIC: &[u8; 4] = b"MDE1";
 const VERSION: u8 = 1;
@@ -54,25 +58,6 @@ pub fn write_mde_file(dest: &Path, bytes: &[u8]) -> Result<(), String> {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     fs::write(dest, bytes).map_err(|e| e.to_string())
-}
-
-pub fn import_mde_file(mde_path: &Path, dest_parent: &Path) -> Result<PathBuf, String> {
-    let stem = mde_path
-        .file_stem()
-        .map(|s| s.to_string_lossy().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "note".to_string());
-
-    let dest_dir = unique_or_existing_dir(dest_parent, &stem);
-    if dest_dir.is_dir() {
-        if let Some(existing) = find_root_markdown(&dest_dir) {
-            return Ok(existing);
-        }
-    }
-
-    let data = fs::read(mde_path).map_err(|e| e.to_string())?;
-    let package = decode_mde(&data)?;
-    extract_package(&package, &dest_dir)
 }
 
 pub fn extract_package(package: &MdePackage, dest_dir: &Path) -> Result<PathBuf, String> {
@@ -155,13 +140,13 @@ fn encrypt_zip(zip_bytes: &[u8]) -> Result<Vec<u8>, String> {
 
 fn decrypt_zip(data: &[u8]) -> Result<Vec<u8>, String> {
     if data.len() < HEADER_LEN + 16 {
-        return Err("不是有效的 .mde 文件".to_string());
+        return Err("不是有效的加密笔记文件".to_string());
     }
     if &data[0..4] != MAGIC {
-        return Err("不是有效的 .mde 文件".to_string());
+        return Err("不是有效的加密笔记文件".to_string());
     }
     if data[4] != VERSION {
-        return Err("不支持的 .mde 版本".to_string());
+        return Err("不支持的加密笔记版本".to_string());
     }
     let salt = &data[5..5 + SALT_LEN];
     let nonce_bytes = &data[5 + SALT_LEN..HEADER_LEN];
@@ -172,7 +157,7 @@ fn decrypt_zip(data: &[u8]) -> Result<Vec<u8>, String> {
     let nonce = Nonce::from_slice(nonce_bytes);
     cipher
         .decrypt(nonce, ciphertext)
-        .map_err(|_| "无法解密 .mde 文件".to_string())
+        .map_err(|_| "无法解密该笔记".to_string())
 }
 
 fn write_zip(
@@ -270,12 +255,23 @@ fn gather_resources(
     vault_path: Option<&Path>,
 ) -> Result<(String, Vec<(String, Vec<u8>)>), String> {
     let source_dir = source_path.and_then(|p| p.parent()).map(Path::to_path_buf);
+    let work = source_path.map(work_dir);
+    let mut lookup_dirs: Vec<PathBuf> = Vec::new();
+    if let Some(dir) = &source_dir {
+        lookup_dirs.push(dir.clone());
+    }
+    if let Some(dir) = &work {
+        if !lookup_dirs.iter().any(|existing| existing == dir) {
+            lookup_dirs.push(dir.clone());
+        }
+    }
+
     let mut used_names: HashSet<String> = HashSet::new();
     let mut resources: Vec<(String, Vec<u8>)> = Vec::new();
     let mut replacements: Vec<(String, String)> = Vec::new();
     let mut copied: HashSet<PathBuf> = HashSet::new();
 
-    if let Some(dir) = &source_dir {
+    for dir in &lookup_dirs {
         let existing = dir.join(".resources");
         if existing.is_dir() {
             for (rel, path) in collect_dir_files(&existing, ".resources") {
@@ -303,7 +299,7 @@ fn gather_resources(
             continue;
         }
         let Some(resolved) = resolve_ref(
-            source_dir.as_deref(),
+            &lookup_dirs,
             vault_path,
             &decoded,
         ) else {
@@ -385,7 +381,7 @@ fn rewrite_markdown(markdown: &str, replacements: &[(String, String)]) -> String
     out
 }
 
-fn resolve_ref(source_dir: Option<&Path>, vault_path: Option<&Path>, raw: &str) -> Option<PathBuf> {
+fn resolve_ref(source_dirs: &[PathBuf], vault_path: Option<&Path>, raw: &str) -> Option<PathBuf> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return None;
@@ -394,7 +390,7 @@ fn resolve_ref(source_dir: Option<&Path>, vault_path: Option<&Path>, raw: &str) 
     if candidate.is_absolute() && candidate.is_file() {
         return Some(candidate);
     }
-    if let Some(dir) = source_dir {
+    for dir in source_dirs {
         let rel = dir.join(&candidate);
         if rel.is_file() {
             return Some(rel);
@@ -442,44 +438,6 @@ fn collect_dir_files(dir: &Path, prefix: &str) -> Vec<(String, PathBuf)> {
         files.push((format!("{prefix}/{rel}"), entry.path().to_path_buf()));
     }
     files
-}
-
-fn unique_or_existing_dir(parent: &Path, stem: &str) -> PathBuf {
-    let primary = parent.join(stem);
-    if primary.is_dir() {
-        if find_root_markdown(&primary).is_some() {
-            return primary;
-        }
-    } else if !primary.exists() {
-        return primary;
-    }
-    for i in 2..10_000 {
-        let candidate = parent.join(format!("{stem}-{i}"));
-        if !candidate.exists() {
-            return candidate;
-        }
-        if candidate.is_dir() && find_root_markdown(&candidate).is_some() {
-            return candidate;
-        }
-    }
-    parent.join(format!("{stem}-{}", chrono::Utc::now().timestamp_millis()))
-}
-
-fn find_root_markdown(dir: &Path) -> Option<PathBuf> {
-    let mut matches: Vec<PathBuf> = fs::read_dir(dir)
-        .ok()?
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| p.is_file())
-        .filter(|p| {
-            p.extension()
-                .and_then(|e| e.to_str())
-                .map(|e| e.eq_ignore_ascii_case("md"))
-                .unwrap_or(false)
-        })
-        .collect();
-    matches.sort();
-    matches.into_iter().next()
 }
 
 fn unique_file_name(used: &mut HashSet<String>, path: &Path) -> String {
@@ -584,11 +542,85 @@ fn hide_dot_resources(path: &Path) {
     }
 }
 
-pub fn ensure_mde_extension(path: PathBuf) -> PathBuf {
-    match path.extension().and_then(|e| e.to_str()) {
-        Some(ext) if ext.eq_ignore_ascii_case("mde") => path,
-        _ => path.with_extension("mde"),
+pub fn ext_lower(path: &Path) -> String {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .unwrap_or_default()
+}
+
+pub fn is_encrypted_note(path: &Path) -> bool {
+    let ext = ext_lower(path);
+    ext == NATIVE_EXT || ext == LEGACY_EXPORT_EXT
+}
+
+pub fn is_note_file(path: &Path) -> bool {
+    matches!(ext_lower(path).as_str(), "mdte" | "mde" | "md")
+}
+
+pub fn note_rank(path: &Path) -> u8 {
+    match ext_lower(path).as_str() {
+        "mdte" => 0,
+        "mde" => 1,
+        "md" => 2,
+        _ => 9,
     }
+}
+
+pub fn with_native_ext(path: &Path) -> PathBuf {
+    if ext_lower(path) == NATIVE_EXT {
+        path.to_path_buf()
+    } else {
+        path.with_extension(NATIVE_EXT)
+    }
+}
+
+pub fn work_dir(note_path: &Path) -> PathBuf {
+    let stem = note_path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "note".to_string());
+    note_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(format!(".{stem}"))
+}
+
+pub fn read_note_markdown(path: &Path) -> Result<String, String> {
+    if is_encrypted_note(path) {
+        let data = fs::read(path).map_err(|e| e.to_string())?;
+        Ok(decode_mde(&data)?.markdown)
+    } else {
+        fs::read_to_string(path).map_err(|e| e.to_string())
+    }
+}
+
+pub fn open_note(path: &Path) -> Result<String, String> {
+    if is_encrypted_note(path) {
+        let data = fs::read(path).map_err(|e| e.to_string())?;
+        let package = decode_mde(&data)?;
+        extract_package(&package, &work_dir(path))?;
+        Ok(package.markdown)
+    } else {
+        fs::read_to_string(path).map_err(|e| e.to_string())
+    }
+}
+
+pub fn save_native_note(
+    path: &Path,
+    markdown: &str,
+    vault_root: Option<&Path>,
+) -> Result<PathBuf, String> {
+    let dest = with_native_ext(path);
+    let md_name = suggested_markdown_name(Some(&dest), "note");
+    let source = if path.exists() { path } else { dest.as_path() };
+    let bytes = export_package_bytes(&md_name, markdown, Some(source), vault_root)?;
+    write_mde_file(&dest, &bytes)?;
+    if let Ok(package) = decode_mde(&bytes) {
+        let _ = extract_package(&package, &work_dir(&dest));
+    }
+    Ok(dest)
 }
 
 pub fn suggested_markdown_name(source_path: Option<&Path>, fallback: &str) -> String {
@@ -629,7 +661,43 @@ mod tests {
     #[test]
     fn decode_rejects_garbage() {
         let err = decode_mde(b"not-an-mde-file").unwrap_err();
-        assert!(err.contains(".mde"));
+        assert!(err.contains("加密笔记"));
+    }
+
+    #[test]
+    fn save_and_open_native_note_roundtrip() {
+        let dir = std::env::temp_dir().join(format!("mdte-roundtrip-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("temp dir");
+        let source = dir.join("demo.md");
+        let dest = save_native_note(&source, "# Hello\n\nsecret body\n", None).expect("save");
+        assert_eq!(dest.extension().and_then(|e| e.to_str()), Some("mdte"));
+        let raw = fs::read(&dest).expect("read bytes");
+        assert_eq!(&raw[0..4], b"MDE1");
+        assert_ne!(&raw[0..2], b"PK");
+        let opened = open_note(&dest).expect("open");
+        assert!(opened.contains("# Hello"));
+        assert!(opened.contains("secret body"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn native_extension_rewrites_legacy_suffixes() {
+        assert_eq!(
+            with_native_ext(Path::new("/vault/hello.md")),
+            PathBuf::from("/vault/hello.mdte")
+        );
+        assert_eq!(
+            with_native_ext(Path::new("/vault/hello.mde")),
+            PathBuf::from("/vault/hello.mdte")
+        );
+        assert_eq!(
+            with_native_ext(Path::new("/vault/hello.mdte")),
+            PathBuf::from("/vault/hello.mdte")
+        );
+        assert!(is_note_file(Path::new("a.mdte")));
+        assert!(is_encrypted_note(Path::new("a.mde")));
+        assert!(!is_encrypted_note(Path::new("a.md")));
     }
 
     #[test]

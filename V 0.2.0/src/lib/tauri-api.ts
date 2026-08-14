@@ -29,12 +29,12 @@ export async function readFile(path: string): Promise<string> {
   return invoke<string>("read_file", { path });
 }
 
-export async function writeFile(path: string, content: string): Promise<void> {
-  return invoke("write_file", { path, content });
+export async function writeFile(path: string, content: string): Promise<string> {
+  return invoke<string>("write_file", { path, content });
 }
 
-export async function createFile(path: string, content?: string): Promise<void> {
-  return invoke("create_file", { path, content: content ?? "" });
+export async function createFile(path: string, content?: string): Promise<string> {
+  return invoke<string>("create_file", { path, content: content ?? "" });
 }
 
 export async function createFolder(path: string): Promise<void> {
@@ -142,26 +142,4 @@ export async function getUpdateDownloadProgress(): Promise<
 
 export async function confirmUpdateInstall(): Promise<void> {
   return invoke("confirm_update_install");
-}
-
-export async function exportMde(
-  markdown: string,
-  sourcePath: string | null,
-  suggestedName: string,
-): Promise<string | null> {
-  return invoke<string | null>("export_mde", {
-    markdown,
-    sourcePath,
-    suggestedName,
-  });
-}
-
-export async function importMde(
-  vaultPath: string,
-  sourcePath?: string | null,
-): Promise<string | null> {
-  return invoke<string | null>("import_mde", {
-    vaultPath,
-    sourcePath: sourcePath ?? null,
-  });
 }

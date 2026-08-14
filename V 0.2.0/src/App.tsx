@@ -19,8 +19,6 @@ function useKeyboardShortcuts() {
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
   const cycleViewMode = useAppStore((s) => s.cycleViewMode);
-  const exportActiveMde = useAppStore((s) => s.exportActiveMde);
-  const importMdePackage = useAppStore((s) => s.importMdePackage);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -61,12 +59,6 @@ function useKeyboardShortcuts() {
         if (viewMode !== "editing") return;
         e.preventDefault();
         setFindReplaceOpen(true);
-      } else if (mod && e.shiftKey && e.key.toLowerCase() === "e") {
-        e.preventDefault();
-        void exportActiveMde();
-      } else if (mod && e.shiftKey && e.key.toLowerCase() === "m") {
-        e.preventDefault();
-        void importMdePackage();
       } else if (mod && e.key.toLowerCase() === "s" && activeTabPath) {
         e.preventDefault();
         void saveTab(activeTabPath);
@@ -85,8 +77,6 @@ function useKeyboardShortcuts() {
     viewMode,
     setViewMode,
     cycleViewMode,
-    exportActiveMde,
-    importMdePackage,
   ]);
 }
 
