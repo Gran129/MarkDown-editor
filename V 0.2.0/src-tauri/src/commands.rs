@@ -354,3 +354,94 @@ pub fn enable_plugin(app: AppHandle, id: String, enabled: bool) -> Result<(), St
     let json = serde_json::to_string_pretty(&plugins).map_err(|e| e.to_string())?;
     fs::write(plugins_path(&app), json).map_err(|e| e.to_string())
 }
+
+fn dialog_file_to_path(picked: tauri_plugin_dialog::FilePath) -> Result<PathBuf, String> {
+    picked.into_path().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn export_mde(
+    app: AppHandle,
+    markdown: String,
+    source_path: Option<String>,
+    suggested_name: String,
+) -> Result<Option<String>, String> {
+    let source = source_path.as_deref().map(Path::new);
+    let fallback = suggested_name
+        .trim()
+        .trim_end_matches(".mde")
+        .trim_end_matches(".md");
+    let md_name = crate::mde::suggested_markdown_name(source, fallback);
+    let default_name = {
+        let stem = Path::new(&md_name)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "note".to_string());
+        format!("{stem}.mde")
+    };
+
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("导出为加密 .mde")
+        .add_filter("加密 Markdown 包", &["mde"])
+        .set_file_name(&default_name)
+        .blocking_save_file();
+
+    let Some(picked) = picked else {
+        return Ok(None);
+    };
+    let dest = crate::mde::ensure_mde_extension(dialog_file_to_path(picked)?);
+    let vault = app
+        .state::<AppState>()
+        .vault_path
+        .lock()
+        .ok()
+        .and_then(|g| g.clone());
+    let bytes = crate::mde::export_package_bytes(
+        &md_name,
+        &markdown,
+        source,
+        vault.as_deref().map(Path::new),
+    )?;
+    crate::mde::write_mde_file(&dest, &bytes)?;
+    Ok(Some(dest.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+pub async fn import_mde(
+    app: AppHandle,
+    vault_path: String,
+    source_path: Option<String>,
+) -> Result<Option<String>, String> {
+    let mde_path = if let Some(path) = source_path {
+        PathBuf::from(path)
+    } else {
+        let picked = app
+            .dialog()
+            .file()
+            .set_title("导入加密 .mde")
+            .add_filter("加密 Markdown 包", &["mde"])
+            .blocking_pick_file();
+        let Some(picked) = picked else {
+            return Ok(None);
+        };
+        dialog_file_to_path(picked)?
+    };
+
+    if !mde_path.is_file() {
+        return Err("找不到 .mde 文件".to_string());
+    }
+
+    let vault = PathBuf::from(&vault_path);
+    if !vault.is_dir() {
+        return Err("Vault 路径不存在".to_string());
+    }
+
+    let dest_parent = mde_path
+        .parent()
+        .filter(|parent| parent.starts_with(&vault))
+        .unwrap_or(vault.as_path());
+    let md_path = crate::mde::import_mde_file(&mde_path, dest_parent)?;
+    Ok(Some(md_path.to_string_lossy().into_owned()))
+}

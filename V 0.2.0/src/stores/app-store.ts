@@ -3,6 +3,8 @@ import { create } from "zustand";
 import {
   addRecentVault,
   clearDraft,
+  exportMde,
+  importMde,
   indexVault,
   listFiles,
   listVaultTags,
@@ -50,6 +52,8 @@ interface AppStore {
   setActiveTab: (path: string) => void;
   updateTabContent: (path: string, content: string, frontmatter: Record<string, unknown>) => void;
   saveTab: (path: string) => Promise<void>;
+  exportActiveMde: () => Promise<void>;
+  importMdePackage: (sourcePath?: string) => Promise<void>;
   markTabDirty: (path: string, dirty: boolean) => void;
   toggleLeftSidebar: () => void;
   toggleRightPanel: () => void;
@@ -179,6 +183,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   openFile: async (path: string) => {
+    if (path.toLowerCase().endsWith(".mde")) {
+      await get().importMdePackage(path);
+      return;
+    }
     const { tabs } = get();
     const existing = tabs.find((t) => t.path === path);
     if (existing) {
@@ -247,6 +255,40 @@ export const useAppStore = create<AppStore>((set, get) => ({
       await get().refreshVaultTags();
     }
     return;
+  },
+
+  exportActiveMde: async () => {
+    const { activeTabPath, tabs } = get();
+    const tab = tabs.find((t) => t.path === activeTabPath);
+    if (!tab) return;
+    const markdown = serializeFrontmatter(tab.frontmatter, tab.content);
+    const suggested = `${tab.title.replace(/[\\/:*?"<>|]/g, "-")}.mde`;
+    try {
+      await exportMde(markdown, tab.path, suggested);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      window.alert(`导出 .mde 失败：${message}`);
+    }
+  },
+
+  importMdePackage: async (sourcePath?: string) => {
+    let vault = get().vaultPath;
+    if (!vault) {
+      await get().openVault();
+      vault = get().vaultPath;
+    }
+    if (!vault) return;
+    try {
+      const mdPath = await importMde(vault, sourcePath ?? null);
+      if (!mdPath) return;
+      await get().refreshFileTree();
+      await indexVault(vault);
+      await get().refreshVaultTags();
+      await get().openFile(mdPath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      window.alert(`导入 .mde 失败：${message}`);
+    }
   },
 
   markTabDirty: (path, dirty) => {

@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  Archive,
   Folder,
   FolderOpen,
   FolderPlus,
@@ -115,7 +116,11 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
       case "rename": {
         if (value === node.name) break;
         const suffix =
-          !isDir && node.name.endsWith(".md") && !value.endsWith(".md") ? ".md" : "";
+          !isDir && node.name.toLowerCase().endsWith(".md") && !value.toLowerCase().endsWith(".md")
+            ? ".md"
+            : !isDir && node.name.toLowerCase().endsWith(".mde") && !value.toLowerCase().endsWith(".mde")
+              ? ".mde"
+              : "";
         const newPath = node.path.replace(/[/\\][^/\\]+$/, `/${value}${suffix}`);
         const oldName = node.name.replace(/\.md$/i, "");
         const newNoteName = value.replace(/\.md$/i, "");
@@ -197,6 +202,8 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
               ) : (
                 <Folder className="h-4 w-4 shrink-0 text-primary" />
               )
+            ) : node.name.toLowerCase().endsWith(".mde") ? (
+              <Archive className="h-4 w-4 shrink-0 text-muted-foreground" />
             ) : (
               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}

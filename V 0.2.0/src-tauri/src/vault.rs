@@ -63,7 +63,7 @@ fn scan_dir(dir: &Path) -> Vec<FileNode> {
                 is_dir: true,
                 children: Some(children),
             });
-        } else if name.ends_with(".md") {
+        } else if name.ends_with(".md") || name.to_lowercase().ends_with(".mde") {
             nodes.push(FileNode {
                 name,
                 path: path.to_string_lossy().to_string(),

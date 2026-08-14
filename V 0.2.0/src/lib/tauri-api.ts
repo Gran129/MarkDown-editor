@@ -143,3 +143,25 @@ export async function getUpdateDownloadProgress(): Promise<
 export async function confirmUpdateInstall(): Promise<void> {
   return invoke("confirm_update_install");
 }
+
+export async function exportMde(
+  markdown: string,
+  sourcePath: string | null,
+  suggestedName: string,
+): Promise<string | null> {
+  return invoke<string | null>("export_mde", {
+    markdown,
+    sourcePath,
+    suggestedName,
+  });
+}
+
+export async function importMde(
+  vaultPath: string,
+  sourcePath?: string | null,
+): Promise<string | null> {
+  return invoke<string | null>("import_mde", {
+    vaultPath,
+    sourcePath: sourcePath ?? null,
+  });
+}
