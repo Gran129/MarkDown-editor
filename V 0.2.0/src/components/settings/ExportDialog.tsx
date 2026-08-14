@@ -30,7 +30,7 @@ const OPTIONS: Array<{
     format: "encrypted",
     title: "加密格式（.mdte）",
     description:
-      "导出为本软件定义的加密笔记包：正文与引用的本地资源一并打包，使用 AES-256-GCM 封装。",
+      "从项目工作文件夹打包正文与引用的本地资源，导出为本软件定义的加密笔记（AES-256-GCM）。",
     icon: FileLock2,
   },
 ];
@@ -38,6 +38,7 @@ const OPTIONS: Array<{
 export function ExportDialog() {
   const exportTargetPath = useAppStore((s) => s.exportTargetPath);
   const closeExportDialog = useAppStore((s) => s.closeExportDialog);
+  const sourceVaultPath = useAppStore((s) => s.sourceVaultPath);
   const tab = useAppStore((s) => s.tabs.find((item) => item.path === s.exportTargetPath));
   const [format, setFormat] = useState<NoteExportFormat>("markdown");
   const [busy, setBusy] = useState(false);
@@ -63,6 +64,7 @@ export function ExportDialog() {
         sourcePath: exportTargetPath,
         format,
         tab,
+        defaultDir: sourceVaultPath,
       });
       if (dest) {
         setFormat("markdown");
@@ -82,7 +84,7 @@ export function ExportDialog() {
           <DialogTitle>导出笔记</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          选择导出「{noteName || "当前笔记"}」的格式。Vault 中的原文件不会被改动。
+          选择导出「{noteName || "当前笔记"}」的格式。保存只写入项目工作文件夹，不会改动原 Vault 文件。
         </p>
         <div className="grid gap-2">
           {OPTIONS.map((option) => {

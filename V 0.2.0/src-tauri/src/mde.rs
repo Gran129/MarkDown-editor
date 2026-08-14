@@ -18,6 +18,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 pub const NATIVE_EXT: &str = "mdte";
 pub const LEGACY_EXPORT_EXT: &str = "mde";
+pub const WORKING_EXT: &str = "md";
 
 const MAGIC: &[u8; 4] = b"MDE1";
 const VERSION: u8 = 1;
@@ -575,6 +576,24 @@ pub fn with_native_ext(path: &Path) -> PathBuf {
     }
 }
 
+pub fn with_working_ext(path: &Path) -> PathBuf {
+    if ext_lower(path) == WORKING_EXT {
+        path.to_path_buf()
+    } else {
+        path.with_extension(WORKING_EXT)
+    }
+}
+
+/// Write the plaintext working copy. Does not encrypt.
+pub fn save_working_note(path: &Path, markdown: &str) -> Result<PathBuf, String> {
+    let dest = with_working_ext(path);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(&dest, markdown).map_err(|e| e.to_string())?;
+    Ok(dest)
+}
+
 pub fn work_dir(note_path: &Path) -> PathBuf {
     let stem = note_path
         .file_stem()
@@ -588,14 +607,7 @@ pub fn work_dir(note_path: &Path) -> PathBuf {
 }
 
 fn resources_dir(note_path: &Path) -> PathBuf {
-    if is_encrypted_note(note_path) {
-        work_dir(note_path).join(".resources")
-    } else {
-        note_path
-            .parent()
-            .unwrap_or_else(|| Path::new("."))
-            .join(".resources")
-    }
+    work_dir(note_path).join(".resources")
 }
 
 /// Copy a local Office (or other) file into the note's `.resources` folder.
@@ -824,6 +836,19 @@ mod tests {
         let err = export_note_to(None, &dir.join("bad"), markdown, "pdf", None).unwrap_err();
         assert!(err.contains("未知导出格式"));
 
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn save_working_note_writes_plaintext_markdown() {
+        let dir = std::env::temp_dir().join(format!("md-working-save-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("temp dir");
+        let dest = save_working_note(&dir.join("demo.mdte"), "# Hello\n").expect("save");
+        assert_eq!(dest.extension().and_then(|e| e.to_str()), Some("md"));
+        let bytes = fs::read(&dest).expect("read");
+        assert_eq!(fs::read_to_string(&dest).expect("text"), "# Hello\n");
+        assert_ne!(&bytes[0..4], b"MDE1");
         let _ = fs::remove_dir_all(&dir);
     }
 }

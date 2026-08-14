@@ -45,6 +45,7 @@ export function SettingsDialog() {
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
   const vaultPath = useAppStore((s) => s.vaultPath);
+  const sourceVaultPath = useAppStore((s) => s.sourceVaultPath);
   const [editionInfo, setEditionInfo] = useState<AppEditionInfo | null>(null);
   const lineHeight = settings.line_height ?? 1.75;
 
@@ -161,7 +162,7 @@ export function SettingsDialog() {
               onChange={(e) => {
                 void updateSettings({
                   default_vault: e.target.checked
-                    ? (vaultPath ?? settings.default_vault)
+                    ? (sourceVaultPath ?? vaultPath ?? settings.default_vault)
                     : null,
                 });
               }}
@@ -190,8 +191,8 @@ export function HelpDialog() {
   const setHelpOpen = useAppStore((s) => s.setHelpOpen);
 
   const shortcuts = [
-    ["Ctrl+S", "保存为加密 .mdte 笔记"],
-    ["Ctrl+Shift+E", "导出笔记（Markdown 或加密 .mdte）"],
+    ["Ctrl+S", "保存到项目工作文件夹（明文 Markdown）"],
+    ["Ctrl+Shift+E", "从项目文件夹导出（Markdown 或加密 .mdte）"],
     ["Ctrl+O", "快速切换"],
     ["Ctrl+H", "查找与替换（编辑视图）"],
     ["Ctrl+Shift+F", "全文搜索"],

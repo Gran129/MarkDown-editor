@@ -128,7 +128,6 @@ pub fn update_wiki_links(vault_path: &str, old_name: &str, new_name: &str) -> Re
         regex::escape(old_name)
     ))
     .map_err(|e| e.to_string())?;
-    let vault = Path::new(vault_path);
 
     for path in collect_md_files(vault_path) {
         let content = match crate::mde::read_note_markdown(&path) {
@@ -140,7 +139,7 @@ pub fn update_wiki_links(vault_path: &str, old_name: &str, new_name: &str) -> Re
             format!("[[{}{}]]", new_name, alias)
         });
         if new_content != content {
-            let dest = crate::mde::save_native_note(&path, new_content.as_ref(), Some(vault))?;
+            let dest = crate::mde::save_working_note(&path, new_content.as_ref())?;
             if dest != path && path.exists() {
                 let _ = fs::remove_file(&path);
             }

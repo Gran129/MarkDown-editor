@@ -51,6 +51,7 @@ function IconButton({
 export function TopBar() {
   const openVault = useAppStore((s) => s.openVault);
   const vaultPath = useAppStore((s) => s.vaultPath);
+  const sourceVaultPath = useAppStore((s) => s.sourceVaultPath);
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
   const toggleLeftSidebar = useAppStore((s) => s.toggleLeftSidebar);
@@ -95,7 +96,8 @@ export function TopBar() {
     await openFile(path);
   };
 
-  const vaultName = vaultPath ? vaultPath.split(/[/\\]/).pop() : null;
+  const displayPath = sourceVaultPath ?? vaultPath;
+  const vaultName = displayPath ? displayPath.split(/[/\\]/).pop() : null;
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
@@ -120,6 +122,7 @@ export function TopBar() {
         className="h-7 gap-1 text-xs"
         disabled={!activeTabPath}
         onClick={() => activeTabPath && void saveTab(activeTabPath)}
+        title="保存到项目文件夹 (Ctrl+S)"
       >
         <Save className="h-3.5 w-3.5" />
         保存

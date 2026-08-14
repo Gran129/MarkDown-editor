@@ -1,5 +1,6 @@
 mod commands;
 mod mde;
+mod project;
 mod search;
 mod updater;
 mod vault;
@@ -11,6 +12,7 @@ use tauri::{Manager, RunEvent};
 
 pub struct AppState {
     pub vault_path: Mutex<Option<String>>,
+    pub source_vault_path: Mutex<Option<String>>,
     pub search: Mutex<search::SearchIndex>,
 }
 
@@ -23,6 +25,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(AppState {
             vault_path: Mutex::new(None),
+            source_vault_path: Mutex::new(None),
             search: Mutex::new(search::SearchIndex::new()),
         })
         .manage(update_state)

@@ -575,7 +575,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           <ToolbarButton
             onClick={() => void saveTab(filePath)}
             active={isDirty}
-            title="保存 (Ctrl+S)"
+            title="保存到项目文件夹 (Ctrl+S)"
           >
             <Save className="h-4 w-4" />
           </ToolbarButton>

@@ -129,8 +129,12 @@ pub fn list_recent_vaults(app: AppHandle) -> Result<Vec<VaultInfo>, String> {
 }
 
 #[tauri::command]
-pub fn add_recent_vault(app: AppHandle, path: String) -> Result<(), String> {
+pub fn add_recent_vault(app: AppHandle, path: String) -> Result<String, String> {
     ensure_app_dirs(&app);
+    let source = PathBuf::from(&path);
+    let work = crate::project::open_project(&app, &source)?;
+    let work_str = work.to_string_lossy().into_owned();
+
     let mut vaults = list_recent_vaults(app.clone())?;
     vaults.retain(|v| v.path != path);
     let name = Path::new(&path)
@@ -150,9 +154,12 @@ pub fn add_recent_vault(app: AppHandle, path: String) -> Result<(), String> {
     fs::write(vaults_path(&app), json).map_err(|e| e.to_string())?;
 
     if let Ok(mut vp) = app.state::<AppState>().vault_path.lock() {
-        *vp = Some(path);
+        *vp = Some(work_str.clone());
     }
-    Ok(())
+    if let Ok(mut sp) = app.state::<AppState>().source_vault_path.lock() {
+        *sp = Some(path);
+    }
+    Ok(work_str)
 }
 
 #[tauri::command]
@@ -166,22 +173,9 @@ pub fn read_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn write_file(
-    state: State<AppState>,
-    path: String,
-    content: String,
-) -> Result<String, String> {
-    let vault = state
-        .vault_path
-        .lock()
-        .ok()
-        .and_then(|guard| guard.clone());
+pub fn write_file(path: String, content: String) -> Result<String, String> {
     let source = PathBuf::from(&path);
-    let dest = crate::mde::save_native_note(
-        &source,
-        &content,
-        vault.as_deref().map(Path::new),
-    )?;
+    let dest = crate::mde::save_working_note(&source, &content)?;
     if dest != source && source.is_file() {
         let _ = fs::remove_file(&source);
     }
@@ -189,16 +183,12 @@ pub fn write_file(
 }
 
 #[tauri::command]
-pub fn create_file(
-    state: State<AppState>,
-    path: String,
-    content: String,
-) -> Result<String, String> {
-    let dest = crate::mde::with_native_ext(Path::new(&path));
+pub fn create_file(path: String, content: String) -> Result<String, String> {
+    let dest = crate::mde::with_working_ext(Path::new(&path));
     if dest.exists() {
         return Err("文件已存在".to_string());
     }
-    write_file(state, dest.to_string_lossy().into_owned(), content)
+    write_file(dest.to_string_lossy().into_owned(), content)
 }
 
 #[tauri::command]
