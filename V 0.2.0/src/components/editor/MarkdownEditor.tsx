@@ -311,7 +311,11 @@ export function MarkdownEditor({
       <TableMenu editor={editor} />
       <div ref={editorContainerRef} className="relative flex-1 overflow-auto">
         <EditorContent editor={editor} className="h-full" />
-        <LinkPreview editor={editor} containerRef={editorContainerRef} />
+        <LinkPreview
+          editor={editor}
+          containerRef={editorContainerRef}
+          onInternalNavigate={onWikiLinkClick}
+        />
       </div>
     </div>
   );

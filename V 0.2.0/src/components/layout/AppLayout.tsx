@@ -17,7 +17,7 @@ import { FindReplaceDialog } from "@/components/editor/FindReplaceDialog";
 import { SearchDialog, QuickSwitcherDialog } from "@/components/search/SearchDialog";
 import { SettingsDialog, HelpDialog } from "@/components/settings/SettingsDialog";
 import { useAppStore } from "@/stores/app-store";
-import { resolveNotePath, createFile } from "@/lib/tauri-api";
+import { resolveNotePath, createFile, revealInExplorer } from "@/lib/tauri-api";
 
 function flattenNoteNames(nodes: import("@/lib/types").FileNode[]): string[] {
   const names: string[] = [];
@@ -66,7 +66,13 @@ export function AppLayout() {
   const handleEmbedClick = async (target: string) => {
     if (!vaultPath) return;
     const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(target);
-    if (isImage) return;
+    if (isImage) {
+      const abs = /^([a-zA-Z]:[\\/]|\/)/.test(target)
+        ? target
+        : `${vaultPath}/${target}`.replace(/\\/g, "/");
+      await revealInExplorer(abs);
+      return;
+    }
     await handleWikiLinkClick(target.replace(/\.md$/i, ""));
   };
 
