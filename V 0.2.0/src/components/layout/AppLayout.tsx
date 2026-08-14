@@ -19,6 +19,7 @@ import { BlockRefPanel } from "@/components/editor/BlockRefPanel";
 import { FindReplaceDialog } from "@/components/editor/FindReplaceDialog";
 import { SearchDialog, QuickSwitcherDialog } from "@/components/search/SearchDialog";
 import { SettingsDialog, HelpDialog } from "@/components/settings/SettingsDialog";
+import { ExportDialog } from "@/components/settings/ExportDialog";
 import { useAppStore } from "@/stores/app-store";
 import { resolveNotePath, createFile, revealInExplorer, listRecentVaults } from "@/lib/tauri-api";
 import {
@@ -217,6 +218,7 @@ export function AppLayout() {
       <FindReplaceDialog />
       <SettingsDialog />
       <HelpDialog />
+      <ExportDialog />
     </div>
   );
 }

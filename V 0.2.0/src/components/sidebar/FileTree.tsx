@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Trash2,
   ExternalLink,
+  Download,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,7 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
   const openFile = useAppStore((s) => s.openFile);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const activeTabPath = useAppStore((s) => s.activeTabPath);
+  const openExportDialog = useAppStore((s) => s.openExportDialog);
 
   const isDir = node.is_dir;
   const isActive = activeTabPath === node.path;
@@ -225,6 +227,12 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             <Pencil className="mr-2 h-4 w-4" />
             重命名
           </ContextMenuItem>
+          {!isDir && isNoteFileName(node.name) && (
+            <ContextMenuItem onSelect={() => openExportDialog(node.path)}>
+              <Download className="mr-2 h-4 w-4" />
+              导出…
+            </ContextMenuItem>
+          )}
           <ContextMenuItem
             className="text-destructive focus:text-destructive"
             onSelect={() => setDeleteOpen(true)}

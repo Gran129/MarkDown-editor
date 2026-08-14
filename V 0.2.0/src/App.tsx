@@ -15,6 +15,7 @@ function useKeyboardShortcuts() {
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
   const setFindReplaceOpen = useEditorStore((s) => s.setFindReplaceOpen);
   const saveTab = useAppStore((s) => s.saveTab);
+  const openExportDialog = useAppStore((s) => s.openExportDialog);
   const activeTabPath = useAppStore((s) => s.activeTabPath);
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
@@ -59,6 +60,9 @@ function useKeyboardShortcuts() {
         if (viewMode !== "editing") return;
         e.preventDefault();
         setFindReplaceOpen(true);
+      } else if (mod && e.shiftKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        if (activeTabPath) openExportDialog(activeTabPath);
       } else if (mod && e.key.toLowerCase() === "s" && activeTabPath) {
         e.preventDefault();
         void saveTab(activeTabPath);
@@ -73,6 +77,7 @@ function useKeyboardShortcuts() {
     setSettingsOpen,
     setFindReplaceOpen,
     saveTab,
+    openExportDialog,
     activeTabPath,
     viewMode,
     setViewMode,

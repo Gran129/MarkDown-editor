@@ -34,6 +34,7 @@
 - **v0.2.0** 双发行模式：便携版本地版（离线、不检测更新）/ 安装包联网版（联网检查 GitHub 更新，离线时自动跳过）
 - 启动时可记住默认 Vault；欢迎页列出最近打开的知识库
 - **`.mdte` 原生加密笔记**（MarkDown Tardis Encrypted）：本软件保存、新建、日记、Wiki 创建的笔记一律写成 `.mdte`。文件内部是 Markdown + 隐藏 `.resources`（本地图片/附件）的压缩包，再用 AES-256-GCM + Argon2id 封装。统一密钥为应用内置口令 `Tardis`。仍可打开旧的明文 `.md` 与此前导出的 `.mde`；保存后会转换成 `.mdte`。
+- **导出**：顶栏「导出」、文件树右键或 `Ctrl+Shift+E` 打开选择对话框，可导出明文 Markdown（`.md`，仅正文）或加密格式（`.mdte`，正文 + 引用资源）。Vault 中的原文件不会被改动。
 
 > 选择 `.mdte` 是为了避开已被占用的 `.mde`（Microsoft Access 编译数据库、GRAPHISOFT Archicad Education 模块）。磁盘头仍使用魔数 `MDE1`，所以旧 `.mde` 包可以继续打开。
 
@@ -100,6 +101,7 @@ npm run build:win
 | 快捷键 | 功能 |
 |--------|------|
 | Ctrl+S | 保存为加密 .mdte 笔记 |
+| Ctrl+Shift+E | 导出笔记（选择 Markdown 或加密 .mdte） |
 | Ctrl+O | 快速切换 |
 | Ctrl+Shift+F | 全文搜索 |
 | Ctrl+/ | 快捷键帮助 |
@@ -185,6 +187,7 @@ npm run build:win
 - macOS/Linux 安装版也能识别以便检查更新
 - 增加语法 / 阅读 / 编辑三种视图，可从源码切换到预览或 Word 式编辑
 - 原生笔记格式改为 `.mdte`：保存即加密（Markdown + `.resources`，AES-256-GCM / Argon2id）；旧 `.md` / `.mde` 打开后保存会转换
+- 导出时可选择明文 Markdown（`.md`）或加密格式（`.mdte`）；Vault 原文件保持不变
 - 嵌入 Word / Excel / PowerPoint：工具栏插入 `.docx` / `.xlsx` / `.pptx`（及旧版 `.doc` / `.xls` / `.ppt`）到笔记 `.resources`；阅读/编辑视图按原版式预览页面、工作表与幻灯片；可下载副本，或用 Word / Excel / PowerPoint 打开原文件编辑。旧版二进制格式仍可打开编辑，但不做画布预览。
 
 ### v0.1.0

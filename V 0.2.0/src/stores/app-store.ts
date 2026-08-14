@@ -38,6 +38,7 @@ interface AppStore {
   quickSwitcherOpen: boolean;
   settingsOpen: boolean;
   helpOpen: boolean;
+  exportTargetPath: string | null;
   tagFilter: string | null;
   vaultTags: TagInfo[];
   viewMode: EditorViewMode;
@@ -62,6 +63,8 @@ interface AppStore {
   setQuickSwitcherOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setHelpOpen: (open: boolean) => void;
+  openExportDialog: (path: string) => void;
+  closeExportDialog: () => void;
   setTagFilter: (tag: string | null) => void;
   refreshVaultTags: () => Promise<void>;
   setViewMode: (mode: EditorViewMode) => void;
@@ -142,6 +145,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   quickSwitcherOpen: false,
   settingsOpen: false,
   helpOpen: false,
+  exportTargetPath: null,
   tagFilter: null,
   vaultTags: [],
   viewMode: loadViewMode(),
@@ -308,6 +312,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setQuickSwitcherOpen: (open) => set({ quickSwitcherOpen: open }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   setHelpOpen: (open) => set({ helpOpen: open }),
+  openExportDialog: (path) => set({ exportTargetPath: path }),
+  closeExportDialog: () => set({ exportTargetPath: null }),
   setTagFilter: (tag) => set({ tagFilter: tag }),
   refreshVaultTags: async () => {
     const { vaultPath } = get();
