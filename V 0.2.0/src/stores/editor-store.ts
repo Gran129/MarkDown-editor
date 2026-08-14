@@ -24,6 +24,8 @@ interface EditorStore {
 
   editorScrollEl: HTMLElement | null;
 
+  sourceScrollEl: HTMLTextAreaElement | null;
+
   findReplaceOpen: boolean;
 
   selectedBlockRef: SelectedBlockRef | null;
@@ -31,6 +33,8 @@ interface EditorStore {
   setEditor: (editor: Editor | null) => void;
 
   setEditorScrollEl: (el: HTMLElement | null) => void;
+
+  setSourceScrollEl: (el: HTMLTextAreaElement | null) => void;
 
   setFindReplaceOpen: (open: boolean) => void;
 
@@ -54,6 +58,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   editorScrollEl: null,
 
+  sourceScrollEl: null,
+
   findReplaceOpen: false,
 
   selectedBlockRef: null,
@@ -61,6 +67,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setEditor: (editor) => set({ editor }),
 
   setEditorScrollEl: (el) => set({ editorScrollEl: el }),
+
+  setSourceScrollEl: (el) => set({ sourceScrollEl: el }),
 
   setFindReplaceOpen: (open) => set({ findReplaceOpen: open }),
 
@@ -139,7 +147,21 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   scrollToHeading: (text) => {
 
-    const { editor, editorScrollEl } = get();
+    const { editor, editorScrollEl, sourceScrollEl } = get();
+
+    if (sourceScrollEl) {
+      const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const headingRe = new RegExp(`^#{1,6}[ \\t]+${escaped}[ \\t]*$`, "m");
+      const match = headingRe.exec(sourceScrollEl.value);
+      if (!match || match.index < 0) return;
+      const lineHeightPx =
+        Number.parseFloat(window.getComputedStyle(sourceScrollEl).lineHeight) || 24;
+      const lineIndex = sourceScrollEl.value.slice(0, match.index).split("\n").length - 1;
+      sourceScrollEl.focus();
+      sourceScrollEl.setSelectionRange(match.index, match.index + match[0].length);
+      sourceScrollEl.scrollTop = Math.max(0, lineIndex * lineHeightPx - 48);
+      return;
+    }
 
     if (!editor) return;
 

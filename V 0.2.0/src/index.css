@@ -353,6 +353,38 @@
 }
 .mermaid-diagram svg { max-width: 100%; height: auto; }
 
+.tiptap.is-readonly {
+  caret-color: transparent;
+  cursor: default;
+}
+
+.tiptap.is-readonly p.is-editor-empty:first-child::before {
+  content: none;
+}
+
+.tiptap.is-readonly [data-wiki-link],
+.tiptap.is-readonly [data-embed],
+.tiptap.is-readonly [data-tag],
+.tiptap.is-readonly a.editor-link {
+  cursor: pointer;
+}
+
+.source-editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: 0;
+  outline: none;
+  padding: 1.25rem 1.5rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Consolas", monospace;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
 .math-block {
   margin: 0.75em 0;
   padding: 0.5em;

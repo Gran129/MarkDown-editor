@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ViewModeSwitch } from "@/components/editor/ViewModeSwitch";
 import { useAppStore } from "@/stores/app-store";
 import { createFile } from "@/lib/tauri-api";
 import { formatDailyNoteName } from "@/lib/markdown";
@@ -102,6 +103,8 @@ export function TopBar() {
         <FolderOpen className="h-3.5 w-3.5" />
         {vaultName ?? "打开 Vault"}
       </Button>
+
+      <ViewModeSwitch />
 
       <div className="flex-1" />
 

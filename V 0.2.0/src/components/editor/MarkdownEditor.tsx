@@ -60,6 +60,8 @@ interface MarkdownEditorProps {
   lineHeight: number;
   autoSaveMs: number;
   noteNames: string[];
+  editable?: boolean;
+  showToolbar?: boolean;
   onWikiLinkClick: (target: string) => void;
   onEmbedClick: (target: string) => void;
   onTagClick: (tag: string) => void;
@@ -73,11 +75,15 @@ export function MarkdownEditor({
   lineHeight,
   autoSaveMs,
   noteNames,
+  editable = true,
+  showToolbar = true,
   onWikiLinkClick,
   onEmbedClick,
   onTagClick,
 }: MarkdownEditorProps) {
   const updateTabContent = useAppStore((s) => s.updateTabContent);
+  const editableRef = useRef(editable);
+  editableRef.current = editable;
   const saveTab = useAppStore((s) => s.saveTab);
   const tabs = useAppStore((s) => s.tabs);
   const setEditor = useEditorStore((s) => s.setEditor);
@@ -159,9 +165,10 @@ export function MarkdownEditor({
       MathInline,
     ],
     content: preprocessMarkdown(content, noteNames),
+    editable,
     editorProps: {
       attributes: {
-        class: "tiptap prose prose-sm max-w-none focus:outline-none",
+        class: `tiptap prose prose-sm max-w-none focus:outline-none${editable ? "" : " is-readonly"}`,
         style: `font-size: ${fontSize}px; --editor-line-height: ${lineHeight}`,
       },
       handleClick: (view, _pos, event) => {
@@ -222,6 +229,7 @@ export function MarkdownEditor({
       },
     },
     onUpdate: ({ editor: ed }) => {
+      if (!editableRef.current) return;
       const md = getMarkdownFromEditor(ed);
       updateTabContent(path, md, frontmatter);
 
@@ -259,12 +267,22 @@ export function MarkdownEditor({
     return () => {
       if (editor) {
         if (saveTimer.current) clearTimeout(saveTimer.current);
-        const md = getMarkdownFromEditor(editor);
-        updateTabContent(path, md, frontmatter);
+        if (editableRef.current) {
+          const md = getMarkdownFromEditor(editor);
+          if (md !== content) {
+            updateTabContent(path, md, frontmatter);
+          }
+        }
       }
       setEditor(null);
     };
-  }, [editor, setEditor, getMarkdownFromEditor, updateTabContent, path, frontmatter]);
+  }, [editor, setEditor, getMarkdownFromEditor, updateTabContent, path, frontmatter, content]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(editable);
+    editor.view.dom.classList.toggle("is-readonly", !editable);
+  }, [editor, editable]);
 
   useEffect(() => {
     if (!editor) return;
@@ -325,8 +343,10 @@ export function MarkdownEditor({
 
   return (
     <div className="flex h-full flex-col">
-      <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
-      <TableMenu editor={editor} />
+      {showToolbar && (
+        <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
+      )}
+      {showToolbar && <TableMenu editor={editor} />}
       <div ref={editorContainerRef} className="relative flex-1 overflow-auto">
         <EditorContent editor={editor} className="h-full" />
         <LinkPreview

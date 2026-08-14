@@ -10,6 +10,7 @@ export function BlockRefPanel() {
   const setBlockReferenceSync = useEditorStore((s) => s.setBlockReferenceSync);
   const jumpToBlockSource = useEditorStore((s) => s.jumpToBlockSource);
   const vaultPath = useAppStore((s) => s.vaultPath);
+  const viewMode = useAppStore((s) => s.viewMode);
 
   if (!selectedBlockRef) {
     return (
@@ -41,10 +42,11 @@ export function BlockRefPanel() {
         </div>
       </div>
 
-      <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm">
+      <label className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${viewMode === "reading" ? "cursor-default opacity-60" : "cursor-pointer"}`}>
         <input
           type="checkbox"
           checked={sync}
+          disabled={viewMode === "reading"}
           onChange={(e) => setBlockReferenceSync(e.target.checked)}
           className="rounded"
         />
