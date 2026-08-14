@@ -135,6 +135,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
     await startVaultWatcher(selected);
     await indexVault(selected);
     set({ vaultPath: selected, tabs: [], activeTabPath: null, tagFilter: null });
+    if (get().settings.default_vault) {
+      await get().updateSettings({ default_vault: selected });
+    }
     await get().refreshFileTree();
     await get().refreshVaultTags();
   },

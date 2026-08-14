@@ -44,6 +44,7 @@ export function SettingsDialog() {
   const updateSettings = useAppStore((s) => s.updateSettings);
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
+  const vaultPath = useAppStore((s) => s.vaultPath);
   const [editionInfo, setEditionInfo] = useState<AppEditionInfo | null>(null);
   const lineHeight = settings.line_height ?? 1.75;
 
@@ -137,6 +138,47 @@ export function SettingsDialog() {
               }
             />
           </div>
+          <div>
+            <label className="text-sm font-medium">Daily Notes 模板</label>
+            <textarea
+              className="mt-1 min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="# {{date}}"
+              value={settings.daily_notes_template}
+              onChange={(e) =>
+                void updateSettings({ daily_notes_template: e.target.value })
+              }
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              仅在新建当日笔记时使用；已存在的日记会直接打开。
+            </p>
+          </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 rounded"
+              checked={Boolean(settings.default_vault)}
+              disabled={!vaultPath && !settings.default_vault}
+              onChange={(e) => {
+                void updateSettings({
+                  default_vault: e.target.checked
+                    ? (vaultPath ?? settings.default_vault)
+                    : null,
+                });
+              }}
+            />
+            <span>
+              启动时自动打开上次 Vault
+              {settings.default_vault ? (
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {settings.default_vault}
+                </span>
+              ) : (
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  需先打开一个 Vault 后再勾选
+                </span>
+              )}
+            </span>
+          </label>
         </div>
       </DialogContent>
     </Dialog>
