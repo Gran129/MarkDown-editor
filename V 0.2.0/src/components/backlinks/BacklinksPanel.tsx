@@ -92,12 +92,6 @@ export function LinksPanel() {
   );
 }
 
-/** @deprecated 使用 LinksPanel */
-export const BacklinksPanel = LinksPanel;
-
-/** @deprecated 使用 LinksPanel */
-export const OutgoingLinksPanel = LinksPanel;
-
 function EmptyPanel({ message }: { message: string }) {
   return (
     <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">

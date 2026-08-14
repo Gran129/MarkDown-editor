@@ -5,6 +5,7 @@ import {
   clearDraft,
   indexVault,
   listFiles,
+  listVaultTags,
   loadDraft,
   loadSettings,
   openVaultDialog,
@@ -18,7 +19,7 @@ import {
   parseFrontmatter,
   serializeFrontmatter,
 } from "@/lib/markdown";
-import type { AppSettings, FileNode, TabState } from "@/lib/types";
+import type { AppSettings, EditorViewMode, FileNode, TabState, TagInfo } from "@/lib/types";
 import { loadSidebarWidths } from "@/components/layout/ResizableSidebar";
 
 interface AppStore {
@@ -38,6 +39,8 @@ interface AppStore {
   settingsOpen: boolean;
   helpOpen: boolean;
   tagFilter: string | null;
+  vaultTags: TagInfo[];
+  viewMode: EditorViewMode;
 
   init: () => Promise<void>;
   openVault: (path?: string) => Promise<void>;
@@ -60,6 +63,9 @@ interface AppStore {
   setSettingsOpen: (open: boolean) => void;
   setHelpOpen: (open: boolean) => void;
   setTagFilter: (tag: string | null) => void;
+  refreshVaultTags: () => Promise<void>;
+  setViewMode: (mode: EditorViewMode) => void;
+  cycleViewMode: () => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -93,6 +99,31 @@ function normalizeSettings(loaded: Partial<AppSettings>): AppSettings {
   };
 }
 
+const VIEW_MODE_STORAGE_KEY = "md-editor-view-mode";
+const VIEW_MODE_ORDER: EditorViewMode[] = ["source", "reading", "editing"];
+
+function isEditorViewMode(value: string | null): value is EditorViewMode {
+  return value === "source" || value === "reading" || value === "editing";
+}
+
+function loadViewMode(): EditorViewMode {
+  try {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (isEditorViewMode(stored)) return stored;
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
+  return "editing";
+}
+
+function persistViewMode(mode: EditorViewMode): void {
+  try {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
+}
+
 const initialSidebarWidths = loadSidebarWidths();
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -112,6 +143,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   settingsOpen: false,
   helpOpen: false,
   tagFilter: null,
+  vaultTags: [],
+  viewMode: loadViewMode(),
 
   init: async () => {
     const loaded = await loadSettings();
@@ -130,8 +163,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     await addRecentVault(selected);
     await startVaultWatcher(selected);
     await indexVault(selected);
-    set({ vaultPath: selected, tabs: [], activeTabPath: null });
+    set({ vaultPath: selected, tabs: [], activeTabPath: null, tagFilter: null });
+    if (get().settings.default_vault) {
+      await get().updateSettings({ default_vault: selected });
+    }
     await get().refreshFileTree();
+    await get().refreshVaultTags();
   },
 
   refreshFileTree: async () => {
@@ -205,7 +242,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     await clearDraft(path);
     get().markTabDirty(path, false);
     const vault = get().vaultPath;
-    if (vault) await indexVault(vault);
+    if (vault) {
+      await indexVault(vault);
+      await get().refreshVaultTags();
+    }
     return;
   },
 
@@ -241,4 +281,32 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   setHelpOpen: (open) => set({ helpOpen: open }),
   setTagFilter: (tag) => set({ tagFilter: tag }),
+  refreshVaultTags: async () => {
+    const { vaultPath } = get();
+    if (!vaultPath) {
+      set({ vaultTags: [] });
+      return;
+    }
+    try {
+      const vaultTags = await listVaultTags(vaultPath);
+      set({ vaultTags });
+    } catch {
+      set({ vaultTags: [] });
+    }
+  },
+  setViewMode: (mode) => {
+    persistViewMode(mode);
+    set({ viewMode: mode });
+    if (mode !== "editing") {
+      void import("@/stores/editor-store").then(({ useEditorStore }) => {
+        useEditorStore.getState().setFindReplaceOpen(false);
+      });
+    }
+  },
+  cycleViewMode: () => {
+    const current = get().viewMode;
+    const index = VIEW_MODE_ORDER.indexOf(current);
+    const next = VIEW_MODE_ORDER[(index + 1) % VIEW_MODE_ORDER.length] ?? "editing";
+    get().setViewMode(next);
+  },
 }));

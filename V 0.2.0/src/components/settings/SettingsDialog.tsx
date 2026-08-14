@@ -44,6 +44,7 @@ export function SettingsDialog() {
   const updateSettings = useAppStore((s) => s.updateSettings);
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
+  const vaultPath = useAppStore((s) => s.vaultPath);
   const [editionInfo, setEditionInfo] = useState<AppEditionInfo | null>(null);
   const lineHeight = settings.line_height ?? 1.75;
 
@@ -137,6 +138,47 @@ export function SettingsDialog() {
               }
             />
           </div>
+          <div>
+            <label className="text-sm font-medium">Daily Notes 模板</label>
+            <textarea
+              className="mt-1 min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="# {{date}}"
+              value={settings.daily_notes_template}
+              onChange={(e) =>
+                void updateSettings({ daily_notes_template: e.target.value })
+              }
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              仅在新建当日笔记时使用；已存在的日记会直接打开。
+            </p>
+          </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 rounded"
+              checked={Boolean(settings.default_vault)}
+              disabled={!vaultPath && !settings.default_vault}
+              onChange={(e) => {
+                void updateSettings({
+                  default_vault: e.target.checked
+                    ? (vaultPath ?? settings.default_vault)
+                    : null,
+                });
+              }}
+            />
+            <span>
+              启动时自动打开上次 Vault
+              {settings.default_vault ? (
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {settings.default_vault}
+                </span>
+              ) : (
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  需先打开一个 Vault 后再勾选
+                </span>
+              )}
+            </span>
+          </label>
         </div>
       </DialogContent>
     </Dialog>
@@ -150,9 +192,13 @@ export function HelpDialog() {
   const shortcuts = [
     ["Ctrl+S", "保存"],
     ["Ctrl+O", "快速切换"],
-    ["Ctrl+H", "查找与替换"],
+    ["Ctrl+H", "查找与替换（编辑视图）"],
     ["Ctrl+Shift+F", "全文搜索"],
     ["Ctrl+/", "快捷键帮助"],
+    ["Ctrl+Alt+1", "语法视图（Markdown 源码）"],
+    ["Ctrl+Alt+2", "阅读视图（只读）"],
+    ["Ctrl+Alt+3", "编辑视图（Word 式）"],
+    ["Ctrl+Alt+\\", "循环切换视图"],
     ["Ctrl+B", "加粗"],
     ["Ctrl+I", "斜体"],
     ["Ctrl+K", "插入链接"],
@@ -177,15 +223,5 @@ export function HelpDialog() {
         </table>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function PluginsPanel() {
-  return (
-    <div className="p-4 text-sm text-muted-foreground">
-      <h3 className="mb-2 font-semibold text-foreground">插件系统</h3>
-      <p>插件 API 已预留。后续版本将支持本地安装 .zip 插件包。</p>
-      <p className="mt-2 text-xs">架构：Tauri sidecar / WASM 沙箱加载</p>
-    </div>
   );
 }

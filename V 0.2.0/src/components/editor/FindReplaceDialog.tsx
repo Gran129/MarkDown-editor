@@ -63,16 +63,34 @@ export function FindReplaceDialog() {
 
   const handleReplaceAll = () => {
     if (!editor || !findText) return;
-    const { doc } = editor.state;
-    let fullText = "";
-    doc.descendants((node) => {
-      if (node.isText && node.text) fullText += node.text;
+    const { state } = editor;
+    const lower = findText.toLowerCase();
+    const replacements: { from: number; to: number }[] = [];
+
+    state.doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) return;
+      const hay = node.text.toLowerCase();
+      let idx = 0;
+      while (idx < hay.length) {
+        const found = hay.indexOf(lower, idx);
+        if (found < 0) break;
+        replacements.push({
+          from: pos + found,
+          to: pos + found + findText.length,
+        });
+        idx = found + findText.length;
+      }
     });
-    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-    const replaced = fullText.replace(regex, replaceText);
-    if (replaced !== fullText) {
-      editor.commands.setContent(replaced);
+
+    if (replacements.length === 0) return;
+
+    let { tr } = state;
+    for (let i = replacements.length - 1; i >= 0; i--) {
+      const range = replacements[i]!;
+      tr = tr.insertText(replaceText, range.from, range.to);
     }
+    editor.view.dispatch(tr);
+    editor.commands.focus();
   };
 
   return (

@@ -307,6 +307,42 @@
   border: 1px dashed var(--primary);
 }
 .embed:hover { opacity: 0.85; }
+.embed-image {
+  display: block;
+  padding: 0.25em;
+  max-width: 100%;
+}
+.embed-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.35em;
+}
+.embed-note {
+  display: block;
+  margin: 0.5em 0;
+  padding: 0.6em 0.75em;
+  border-style: solid;
+}
+.embed-note-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.35em;
+}
+.embed-note-body {
+  display: block;
+  color: var(--muted-foreground);
+  white-space: pre-wrap;
+  max-height: 8em;
+  overflow: hidden;
+  font-size: 0.85em;
+}
+.embed-note-missing {
+  display: block;
+  color: var(--destructive);
+  font-size: 0.8em;
+}
 
 .mermaid-diagram {
   margin: 0.5em 0;
@@ -316,6 +352,38 @@
   overflow-x: auto;
 }
 .mermaid-diagram svg { max-width: 100%; height: auto; }
+
+.tiptap.is-readonly {
+  caret-color: transparent;
+  cursor: default;
+}
+
+.tiptap.is-readonly p.is-editor-empty:first-child::before {
+  content: none;
+}
+
+.tiptap.is-readonly [data-wiki-link],
+.tiptap.is-readonly [data-embed],
+.tiptap.is-readonly [data-tag],
+.tiptap.is-readonly a.editor-link {
+  cursor: pointer;
+}
+
+.source-editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: 0;
+  outline: none;
+  padding: 1.25rem 1.5rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Consolas", monospace;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
 
 .math-block {
   margin: 0.75em 0;

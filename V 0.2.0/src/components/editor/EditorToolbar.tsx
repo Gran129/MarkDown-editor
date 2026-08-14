@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { generateBlockId } from "@/lib/block-utils";
 import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { MarkColorMenu } from "@/components/editor/MarkColorMenu";
@@ -193,15 +194,25 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
   };
 
   const insertBlockReference = () => {
-    const { blockId } = editor.getAttributes("paragraph");
-    if (!blockId) return;
-    const text = editor.state.selection.$from.parent.textContent;
+    const $from = editor.state.selection.$from;
+    const para = $from.parent;
+    if (para.type.name !== "paragraph") return;
+    const text = para.textContent.trim();
+    if (!text) return;
+    let blockId = (para.attrs.blockId as string | null) ?? "";
+    if (!blockId) {
+      blockId = generateBlockId();
+      const pos = $from.before($from.depth);
+      editor.view.dispatch(
+        editor.state.tr.setNodeMarkup(pos, undefined, { ...para.attrs, blockId }),
+      );
+    }
     editor
       .chain()
       .focus()
       .insertBlockReference({
         sourceFile: filePath ?? "",
-        blockId: blockId as string,
+        blockId,
         sync: blockRefSync,
         content: text,
       })
@@ -660,6 +671,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             将当前段落引用为可同步的「板块」。引用后点击板块可在右侧面板查看来源并跳转。
+            请先把光标放在一段有文字的段落上。
           </p>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -670,7 +682,12 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
             开启同步（源段落修改时自动更新）
           </label>
           <DialogFooter>
-            <Button onClick={insertBlockReference}>插入引用</Button>
+            <Button
+              onClick={insertBlockReference}
+              disabled={!editor.state.selection.$from.parent.textContent.trim()}
+            >
+              插入引用
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

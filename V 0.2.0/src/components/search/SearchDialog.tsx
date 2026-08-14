@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { searchNotes } from "@/lib/tauri-api";
+import { fuzzyMatch } from "@/lib/markdown";
 import type { SearchResult } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
 
@@ -88,7 +89,10 @@ export function QuickSwitcherDialog() {
   const allFiles = flattenMdFiles(fileTree);
 
   const filtered = query
-    ? allFiles.filter((f) => f.toLowerCase().includes(query.toLowerCase()))
+    ? allFiles.filter((f) => {
+        const name = f.split(/[/\\]/).pop() ?? f;
+        return fuzzyMatch(query, name) || name.toLowerCase().includes(query.toLowerCase());
+      })
     : allFiles;
 
   useEffect(() => {

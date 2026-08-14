@@ -6,6 +6,24 @@ export function parseFrontmatter(content: string): {
   frontmatter: Record<string, unknown>;
   body: string;
 } {
+  const parsed = tryParseFrontmatter(content);
+  if (!parsed) {
+    return { frontmatter: {}, body: content };
+  }
+  return parsed;
+}
+
+/**
+ * Parse YAML frontmatter. Returns null when the opening `---` is present
+ * but the block is incomplete or the YAML is invalid, so source-mode edits
+ * do not wipe existing metadata mid-keystroke.
+ */
+export function tryParseFrontmatter(
+  content: string,
+): { frontmatter: Record<string, unknown>; body: string } | null {
+  if (isIncompleteFrontmatter(content)) {
+    return null;
+  }
   const match = content.match(FRONTMATTER_REGEX);
   if (!match) {
     return { frontmatter: {}, body: content };
@@ -17,8 +35,19 @@ export function parseFrontmatter(content: string): {
       body: match[2] ?? "",
     };
   } catch {
-    return { frontmatter: {}, body: content };
+    return null;
   }
+}
+
+export function isIncompleteFrontmatter(content: string): boolean {
+  const text = content.startsWith("\uFEFF") ? content.slice(1) : content;
+  if (!text.startsWith("---")) return false;
+  const afterOpen = text.match(/^---\r?\n/);
+  if (!afterOpen) {
+    return text === "---" || text === "---\r";
+  }
+  const rest = text.slice(afterOpen[0].length);
+  return !/(?:\r?\n)---(?:\r?\n|$)/.test(rest);
 }
 
 export function serializeFrontmatter(
