@@ -16,10 +16,33 @@ function useKeyboardShortcuts() {
   const setFindReplaceOpen = useEditorStore((s) => s.setFindReplaceOpen);
   const saveTab = useAppStore((s) => s.saveTab);
   const activeTabPath = useAppStore((s) => s.activeTabPath);
+  const viewMode = useAppStore((s) => s.viewMode);
+  const setViewMode = useAppStore((s) => s.setViewMode);
+  const cycleViewMode = useAppStore((s) => s.cycleViewMode);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.altKey && e.code === "Digit1") {
+        e.preventDefault();
+        setViewMode("source");
+        return;
+      }
+      if (mod && e.altKey && e.code === "Digit2") {
+        e.preventDefault();
+        setViewMode("reading");
+        return;
+      }
+      if (mod && e.altKey && e.code === "Digit3") {
+        e.preventDefault();
+        setViewMode("editing");
+        return;
+      }
+      if (mod && e.altKey && e.code === "Backslash") {
+        e.preventDefault();
+        cycleViewMode();
+        return;
+      }
       if (mod && e.shiftKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
         setSearchOpen(true);
@@ -33,6 +56,7 @@ function useKeyboardShortcuts() {
         e.preventDefault();
         setSettingsOpen(true);
       } else if (mod && e.key.toLowerCase() === "h") {
+        if (viewMode !== "editing") return;
         e.preventDefault();
         setFindReplaceOpen(true);
       } else if (mod && e.key.toLowerCase() === "s" && activeTabPath) {
@@ -50,6 +74,9 @@ function useKeyboardShortcuts() {
     setFindReplaceOpen,
     saveTab,
     activeTabPath,
+    viewMode,
+    setViewMode,
+    cycleViewMode,
   ]);
 }
 

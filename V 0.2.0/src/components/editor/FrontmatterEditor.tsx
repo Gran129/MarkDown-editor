@@ -3,9 +3,14 @@ import { Input } from "@/components/ui/input";
 interface FrontmatterEditorProps {
   frontmatter: Record<string, unknown>;
   onChange: (fm: Record<string, unknown>) => void;
+  readOnly?: boolean;
 }
 
-export function FrontmatterEditor({ frontmatter, onChange }: FrontmatterEditorProps) {
+export function FrontmatterEditor({
+  frontmatter,
+  onChange,
+  readOnly = false,
+}: FrontmatterEditorProps) {
   const title = typeof frontmatter.title === "string" ? frontmatter.title : "";
   const tags = Array.isArray(frontmatter.tags)
     ? frontmatter.tags.filter((t): t is string => typeof t === "string").join(", ")
@@ -18,6 +23,8 @@ export function FrontmatterEditor({ frontmatter, onChange }: FrontmatterEditorPr
         <Input
           className="h-7 w-40"
           value={title}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(e) => onChange({ ...frontmatter, title: e.target.value })}
           placeholder="笔记标题"
         />
@@ -27,6 +34,8 @@ export function FrontmatterEditor({ frontmatter, onChange }: FrontmatterEditorPr
         <Input
           className="h-7 w-48"
           value={tags}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(e) =>
             onChange({
               ...frontmatter,

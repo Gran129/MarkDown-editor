@@ -47,6 +47,9 @@ export interface TagInfo {
   paths: string[];
 }
 
+/** 语法视图 = Markdown 源码；阅读视图 = 只读预览；编辑视图 = Word 式所见即所得 */
+export type EditorViewMode = "source" | "reading" | "editing";
+
 export type AppEdition = "portable" | "installed";
 
 export type UpdateStatus =
