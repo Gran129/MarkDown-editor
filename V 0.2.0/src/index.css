@@ -344,6 +344,89 @@
   font-size: 0.8em;
 }
 
+.embed-office-node {
+  display: block;
+  margin: 0.75em 0;
+  padding: 0;
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  cursor: default;
+  opacity: 1;
+}
+.embed-office-node:hover { opacity: 1; }
+.embed-office {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.5em;
+  background: var(--card);
+  color: var(--foreground);
+  overflow: hidden;
+  cursor: default;
+}
+.embed-office-chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+}
+.embed-office-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.embed-office-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+.embed-office-app {
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.embed-office-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.embed-office-page {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  padding: 0 0.2rem;
+}
+.embed-office-fallback {
+  display: block;
+  padding: 0.7rem 0.85rem;
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+}
+.embed-office-canvas-wrap,
+.embed-office-xlsx {
+  display: block;
+  width: 100%;
+  background: #fff;
+}
+.embed-office-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+.embed-office-xlsx-host {
+  width: 100%;
+  min-height: 26rem;
+  height: 26rem;
+}
+
 .mermaid-diagram {
   margin: 0.5em 0;
   padding: 0.5em;

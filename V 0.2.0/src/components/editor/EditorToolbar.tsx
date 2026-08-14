@@ -38,6 +38,7 @@ import {
   Blocks,
   Upload,
   Globe,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,8 @@ import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { MarkColorMenu } from "@/components/editor/MarkColorMenu";
 import { CodeBlockColorMenu, pickLocalImagePath } from "@/components/editor/CodeBlockColorMenu";
+import { copyIntoNoteResources } from "@/lib/tauri-api";
+import { pickLocalOfficePath } from "@/lib/office";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,6 +154,21 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
     editor.chain().focus().setEmbed({ target }).run();
     setEmbedOpen(false);
     setEmbedTarget("");
+  };
+
+  const insertOfficeFile = async () => {
+    if (!filePath) {
+      window.alert("请先保存笔记，再插入 Word / Excel / PowerPoint 文件。");
+      return;
+    }
+    const picked = await pickLocalOfficePath();
+    if (!picked) return;
+    try {
+      const relative = await copyIntoNoteResources(filePath, picked);
+      editor.chain().focus().setEmbed({ target: relative }).run();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "插入 Office 文件失败");
+    }
   };
 
   const insertCallout = (type: string) => {
@@ -509,6 +527,12 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         >
           <Paperclip className="h-4 w-4" />
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => void insertOfficeFile()}
+          title="插入 Word / Excel / PowerPoint（笔记内预览，原文件可编辑）"
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+        </ToolbarButton>
         <ToolbarButton onClick={openImageDialog} title="插入图片">
           <ImageIcon className="h-4 w-4" />
         </ToolbarButton>
@@ -722,7 +746,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           </DialogHeader>
           <Input
             list="embed-note-names"
-            placeholder="笔记名或图片路径"
+            placeholder="笔记名、图片或 Office 文件路径"
             value={embedTarget}
             onChange={(e) => setEmbedTarget(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && insertEmbed()}

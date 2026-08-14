@@ -399,3 +399,57 @@ pub fn enable_plugin(app: AppHandle, id: String, enabled: bool) -> Result<(), St
     let json = serde_json::to_string_pretty(&plugins).map_err(|e| e.to_string())?;
     fs::write(plugins_path(&app), json).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
+    let file = PathBuf::from(&path);
+    if !file.is_file() {
+        return Err("文件不存在".to_string());
+    }
+    fs::read(&file).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn copy_file(source: String, destination: String) -> Result<(), String> {
+    let dest = PathBuf::from(&destination);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(&source, &dest).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn copy_into_note_resources(note_path: String, source_path: String) -> Result<String, String> {
+    crate::mde::copy_into_note_resources(Path::new(&note_path), Path::new(&source_path))
+}
+
+#[tauri::command]
+pub fn open_path(path: String) -> Result<(), String> {
+    let file = PathBuf::from(&path);
+    if !file.exists() {
+        return Err("文件不存在".to_string());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}

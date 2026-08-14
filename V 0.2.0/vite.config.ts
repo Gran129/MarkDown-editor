@@ -13,6 +13,13 @@ export default defineConfig({
     },
   },
   clearScreen: false,
+  optimizeDeps: {
+    exclude: ["@silurus/ooxml"],
+  },
+  worker: {
+    format: "es",
+  },
+  assetsInclude: ["**/*.wasm"],
   server: {
     port: 1420,
     strictPort: true,
