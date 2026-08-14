@@ -23,9 +23,25 @@ export const BlockReference = Node.create({
 
   addAttributes() {
     return {
-      sourceFile: { default: "" },
-      blockId: { default: "" },
-      sync: { default: true },
+      sourceFile: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-source-file") ?? "",
+        renderHTML: (attributes) =>
+          attributes.sourceFile ? { "data-source-file": attributes.sourceFile } : {},
+      },
+      blockId: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-block-id") ?? "",
+        renderHTML: (attributes) =>
+          attributes.blockId ? { "data-block-id": attributes.blockId } : {},
+      },
+      sync: {
+        default: true,
+        parseHTML: (element) => element.getAttribute("data-sync") !== "false",
+        renderHTML: (attributes) => ({
+          "data-sync": attributes.sync ? "true" : "false",
+        }),
+      },
     };
   },
 
