@@ -9,6 +9,7 @@ import {
   Calendar,
   HelpCircle,
   Save,
+  FileSearch,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,13 @@ function IconButton({
   disabled,
   children,
   className,
+  title,
 }: {
   onClick?: () => void;
   disabled?: boolean;
   children: React.ReactNode;
   className?: string;
+  title?: string;
 }) {
   return (
     <Button
@@ -34,6 +37,8 @@ function IconButton({
       className={className ?? "h-8 w-8"}
       onClick={onClick}
       disabled={disabled}
+      title={title}
+      aria-label={title}
     >
       {children}
     </Button>
@@ -87,7 +92,7 @@ export function TopBar() {
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
-      <IconButton onClick={toggleLeftSidebar}>
+      <IconButton onClick={toggleLeftSidebar} title="切换左侧栏">
         <PanelLeft className="h-4 w-4" />
       </IconButton>
 
@@ -114,25 +119,25 @@ export function TopBar() {
         )}
       </Button>
 
-      <IconButton onClick={() => void handleDailyNote()}>
+      <IconButton onClick={() => void handleDailyNote()} title="今日日记">
         <Calendar className="h-4 w-4" />
       </IconButton>
-      <IconButton onClick={() => setQuickSwitcherOpen(true)}>
+      <IconButton onClick={() => setQuickSwitcherOpen(true)} title="快速切换 (Ctrl+O)">
+        <FileSearch className="h-4 w-4" />
+      </IconButton>
+      <IconButton onClick={() => setSearchOpen(true)} title="全文搜索 (Ctrl+Shift+F)">
         <Search className="h-4 w-4" />
       </IconButton>
-      <IconButton onClick={() => setSearchOpen(true)}>
-        <Search className="h-4 w-4" />
-      </IconButton>
-      <IconButton onClick={() => setSettingsOpen(true)}>
+      <IconButton onClick={() => setSettingsOpen(true)} title="设置">
         <Settings className="h-4 w-4" />
       </IconButton>
-      <IconButton onClick={() => setHelpOpen(true)}>
+      <IconButton onClick={() => setHelpOpen(true)} title="快捷键">
         <HelpCircle className="h-4 w-4" />
       </IconButton>
-      <IconButton onClick={toggleTheme}>
+      <IconButton onClick={toggleTheme} title={theme === "dark" ? "切换浅色" : "切换深色"}>
         {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </IconButton>
-      <IconButton onClick={toggleRightPanel}>
+      <IconButton onClick={toggleRightPanel} title="切换右侧栏">
         <PanelRight className="h-4 w-4" />
       </IconButton>
     </header>
