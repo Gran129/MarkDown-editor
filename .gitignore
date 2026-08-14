@@ -4,3 +4,10 @@ V 0.1.0/
 # OS
 .DS_Store
 Thumbs.db
+
+# Built Windows installers — uploaded to GitHub Releases, not committed
+releases/*.exe
+releases/*.msi
+releases/*.AppImage
+releases/*.deb
+releases/*.dmg
