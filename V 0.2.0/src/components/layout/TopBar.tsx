@@ -70,13 +70,17 @@ export function TopBar() {
     const folder = settings.daily_notes_folder;
     const fileName = formatDailyNoteName();
     const path = `${vaultPath}/${folder}/${fileName}`.replace(/\\/g, "/");
+    const title = fileName.replace(/\.md$/i, "");
     try {
-      await createFile(path, settings.daily_notes_template || `# ${fileName.replace(".md", "")}\n`);
-    } catch {
-      await createFile(`${vaultPath}/${fileName}`, `# ${fileName.replace(".md", "")}\n`);
+      await createFile(path, settings.daily_notes_template || `# ${title}\n`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("已存在")) {
+        console.error(message);
+      }
     }
     await refreshFileTree();
-    await openFile(path.includes(folder) ? path : `${vaultPath}/${fileName}`);
+    await openFile(path);
   };
 
   const vaultName = vaultPath ? vaultPath.split(/[/\\]/).pop() : null;
