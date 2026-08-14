@@ -41,6 +41,7 @@ pub fn run() {
             commands::start_vault_watcher,
             commands::index_vault,
             commands::search_notes,
+            commands::list_vault_tags,
             commands::get_backlinks,
             commands::resolve_note_path,
             commands::update_wiki_links_on_rename,

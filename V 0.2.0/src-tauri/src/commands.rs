@@ -56,6 +56,12 @@ pub struct BacklinkResult {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TagInfo {
+    pub tag: String,
+    pub paths: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PluginManifest {
     pub id: String,
     pub name: String,
@@ -250,6 +256,15 @@ pub fn search_notes(
 ) -> Result<Vec<SearchResult>, String> {
     let search = state.search.lock().map_err(|e| e.to_string())?;
     search.search(&vault_path, &query)
+}
+
+#[tauri::command]
+pub fn list_vault_tags(
+    state: State<AppState>,
+    vault_path: String,
+) -> Result<Vec<TagInfo>, String> {
+    let search = state.search.lock().map_err(|e| e.to_string())?;
+    search.list_tags(&vault_path)
 }
 
 #[tauri::command]

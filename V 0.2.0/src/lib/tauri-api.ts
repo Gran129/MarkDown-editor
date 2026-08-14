@@ -5,6 +5,7 @@ import type {
   BacklinkResult,
   FileNode,
   SearchResult,
+  TagInfo,
   VaultInfo,
 } from "./types";
 
@@ -111,6 +112,10 @@ export async function loadDraft(path: string): Promise<string | null> {
 
 export async function clearDraft(path: string): Promise<void> {
   return invoke("clear_draft", { path });
+}
+
+export async function listVaultTags(vaultPath: string): Promise<TagInfo[]> {
+  return invoke<TagInfo[]>("list_vault_tags", { vaultPath });
 }
 
 export async function getAppEditionInfo(): Promise<

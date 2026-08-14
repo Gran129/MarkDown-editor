@@ -42,6 +42,11 @@ export interface TabState {
   frontmatter: Record<string, unknown>;
 }
 
+export interface TagInfo {
+  tag: string;
+  paths: string[];
+}
+
 export type AppEdition = "portable" | "installed";
 
 export type UpdateStatus =
