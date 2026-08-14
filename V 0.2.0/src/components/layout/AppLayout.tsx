@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileTreeSidebar } from "@/components/sidebar/FileTree";
 import { LinksPanel } from "@/components/backlinks/BacklinksPanel";
@@ -17,7 +19,8 @@ import { FindReplaceDialog } from "@/components/editor/FindReplaceDialog";
 import { SearchDialog, QuickSwitcherDialog } from "@/components/search/SearchDialog";
 import { SettingsDialog, HelpDialog } from "@/components/settings/SettingsDialog";
 import { useAppStore } from "@/stores/app-store";
-import { resolveNotePath, createFile, revealInExplorer } from "@/lib/tauri-api";
+import { resolveNotePath, createFile, revealInExplorer, listRecentVaults } from "@/lib/tauri-api";
+import type { VaultInfo } from "@/lib/types";
 
 function flattenNoteNames(nodes: import("@/lib/types").FileNode[]): string[] {
   const names: string[] = [];
@@ -189,6 +192,14 @@ export function AppLayout() {
 function WelcomeScreen() {
   const openVault = useAppStore((s) => s.openVault);
   const vaultPath = useAppStore((s) => s.vaultPath);
+  const [recent, setRecent] = useState<VaultInfo[]>([]);
+
+  useEffect(() => {
+    if (vaultPath) return;
+    void listRecentVaults()
+      .then(setRecent)
+      .catch(() => setRecent([]));
+  }, [vaultPath]);
 
   if (vaultPath) {
     return (
@@ -214,6 +225,27 @@ function WelcomeScreen() {
       >
         打开 Vault
       </button>
+      {recent.length > 0 && (
+        <div className="mt-4 w-full max-w-md text-left">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            最近打开
+          </p>
+          <ul className="space-y-1">
+            {recent.map((vault) => (
+              <li key={vault.path}>
+                <button
+                  type="button"
+                  className="w-full rounded-md px-3 py-2 text-left hover:bg-accent"
+                  onClick={() => void openVault(vault.path)}
+                >
+                  <div className="text-sm font-medium">{vault.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">{vault.path}</div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
