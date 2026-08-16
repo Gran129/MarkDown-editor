@@ -3,6 +3,7 @@ import { memo } from "react";
 import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
 import { SourceEditor } from "@/components/editor/SourceEditor";
 import { FrontmatterEditor } from "@/components/editor/FrontmatterEditor";
+import { cn } from "@/lib/utils";
 import type { AppSettings, EditorViewMode, TabState } from "@/lib/types";
 
 interface EditorWorkspaceProps {
@@ -26,29 +27,30 @@ export const EditorWorkspace = memo(function EditorWorkspace({
   onTagClick,
   onFrontmatterChange,
 }: EditorWorkspaceProps) {
+  const isSource = viewMode === "source";
+  const isRich = !isSource;
+
   return (
     <>
-      {viewMode !== "source" && (
+      {isRich && (
         <FrontmatterEditor
           frontmatter={activeTab.frontmatter}
           readOnly={viewMode === "reading"}
           onChange={onFrontmatterChange}
         />
       )}
-      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-        {viewMode === "source" ? (
-          <SourceEditor
-            key={activeTab.path}
-            path={activeTab.path}
-            content={activeTab.content}
-            frontmatter={activeTab.frontmatter}
-            fontSize={settings.font_size}
-            lineHeight={settings.line_height}
-            autoSaveMs={settings.auto_save_ms}
-          />
-        ) : (
+      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+        {/* Keep TipTap mounted while in source mode to avoid React/TipTap DOM teardown races. */}
+        <div
+          className={cn(
+            "absolute inset-0 flex min-h-0 min-w-0 flex-col",
+            isSource && "pointer-events-none invisible",
+          )}
+          aria-hidden={isSource}
+        >
           <MarkdownEditor
             key={activeTab.path}
+            active={isRich}
             path={activeTab.path}
             content={activeTab.content}
             frontmatter={activeTab.frontmatter}
@@ -62,7 +64,24 @@ export const EditorWorkspace = memo(function EditorWorkspace({
             onEmbedClick={onEmbedClick}
             onTagClick={onTagClick}
           />
-        )}
+        </div>
+        <div
+          className={cn(
+            "absolute inset-0 flex min-h-0 min-w-0 flex-col",
+            isRich && "pointer-events-none invisible",
+          )}
+          aria-hidden={isRich}
+        >
+          <SourceEditor
+            key={activeTab.path}
+            path={activeTab.path}
+            content={activeTab.content}
+            frontmatter={activeTab.frontmatter}
+            fontSize={settings.font_size}
+            lineHeight={settings.line_height}
+            autoSaveMs={settings.auto_save_ms}
+          />
+        </div>
       </div>
     </>
   );

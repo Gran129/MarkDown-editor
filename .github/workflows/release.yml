@@ -66,15 +66,13 @@ jobs:
             releases/MarkDown-editor.portable
             releases/INSTALL.zh-CN.txt
           body: |
-            Windows 安装包（v0.2.4）
+            Windows 安装包（v0.2.5）
 
-            - **安装包联网版**：`MarkDown-editor_0.2.4_x64-setup.exe` — 双击安装到电脑
-            - **便携版本地版**：`MarkDown-editor_0.2.4_portable.exe` — 免安装，可离线使用
+            - **安装包联网版**：`MarkDown-editor_0.2.5_x64-setup.exe` — 双击安装到电脑
+            - **便携版本地版**：`MarkDown-editor_0.2.5_portable.exe` — 免安装，可离线使用
 
             ### 修复
-            - 编辑工具栏随宽度自动换行，不再被右栏遮挡
-            - 优化视图切换、侧栏切换、打开文件时的卡顿
-            - 左右侧栏缩窄时文本自动换行，信息展示更完整
+            - 修复切换语法/阅读/编辑视图时的 removeChild DOM 报错
 
             安装说明见 `INSTALL.zh-CN.txt`。需要 Windows 10/11 64 位与 WebView2。
         env:

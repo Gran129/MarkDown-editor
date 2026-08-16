@@ -64,6 +64,7 @@ interface MarkdownEditorProps {
   lineHeight: number;
   autoSaveMs: number;
   noteNames: string[];
+  active?: boolean;
   editable?: boolean;
   showToolbar?: boolean;
   onWikiLinkClick: (target: string) => void;
@@ -79,6 +80,7 @@ export function MarkdownEditor({
   lineHeight,
   autoSaveMs,
   noteNames,
+  active = true,
   editable = true,
   showToolbar = true,
   onWikiLinkClick,
@@ -329,14 +331,35 @@ export function MarkdownEditor({
   editorRef.current = editor;
 
   useEffect(() => {
-    setEditorScrollEl(editorContainerRef.current);
-    return () => setEditorScrollEl(null);
-  }, [setEditorScrollEl, editor]);
+    return () => {
+      const ed = editorRef.current;
+      if (ed && !ed.isDestroyed) {
+        try {
+          ed.destroy();
+        } catch {
+          /* TipTap/React may race during teardown */
+        }
+      }
+    };
+  }, [path]);
 
   useEffect(() => {
+    if (!active) {
+      setEditorScrollEl(null);
+      return;
+    }
+    setEditorScrollEl(editorContainerRef.current);
+    return () => setEditorScrollEl(null);
+  }, [setEditorScrollEl, editor, active]);
+
+  useEffect(() => {
+    if (!active) {
+      setEditor(null);
+      return;
+    }
     setEditor(editor);
     return () => setEditor(null);
-  }, [editor, setEditor]);
+  }, [editor, setEditor, active]);
 
   useEffect(() => {
     return () => {
@@ -349,31 +372,31 @@ export function MarkdownEditor({
   }, [getMarkdownFromEditor, updateTabContent]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !active) return;
     editor.setEditable(editable);
     editor.view.dom.classList.toggle("is-readonly", !editable);
-  }, [editor, editable]);
+  }, [editor, editable, active]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !active) return;
     const el = editor.view.dom as HTMLElement;
     el.style.fontSize = `${fontSize}px`;
     el.style.setProperty("--editor-line-height", String(lineHeight));
     el.style.lineHeight = String(lineHeight);
-  }, [editor, fontSize, lineHeight]);
+  }, [editor, fontSize, lineHeight, active]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !active) return;
     const timer = window.setTimeout(() => {
       void refreshSyncedBlockReferences(editor, path, (p) =>
         tabsRef.current.find((t) => t.path === p)?.content,
       );
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [editor, path]);
+  }, [editor, path, active]);
 
   useEffect(() => {
-    if (!editor || !editorContainerRef.current) return;
+    if (!editor || !active || !editorContainerRef.current) return;
 
     let mermaidTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -414,7 +437,7 @@ export function MarkdownEditor({
       if (mermaidTimer) clearTimeout(mermaidTimer);
       editor.off("update", scheduleMermaid);
     };
-  }, [editor]);
+  }, [editor, active]);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">

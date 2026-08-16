@@ -147,7 +147,7 @@ export function AppLayout() {
             </div>
           )}
           {activeTab ? (
-            <EditorErrorBoundary resetKey={activeTab.path}>
+            <EditorErrorBoundary resetKey={`${activeTab.path}:${viewMode}`}>
               <EditorWorkspace
                 activeTab={activeTab}
                 viewMode={viewMode}
