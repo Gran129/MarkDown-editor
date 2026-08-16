@@ -19,7 +19,7 @@ export function TabBar() {
           <div
             key={tab.path}
             className={cn(
-              "group relative flex max-w-[200px] cursor-pointer items-center gap-1.5 rounded-t-lg border border-b-0 px-3 py-1.5 text-xs transition-colors",
+              "group relative flex max-w-[220px] min-w-[96px] cursor-pointer items-start gap-1.5 rounded-t-lg border border-b-0 px-3 py-1.5 text-xs transition-colors",
               active
                 ? "border-border bg-background text-foreground shadow-[0_-1px_2px_rgba(0,0,0,0.04)]"
                 : "border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground",
@@ -32,7 +32,9 @@ export function TabBar() {
             {tab.isDirty && (
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" title="未保存" />
             )}
-            <span className="truncate">{tab.title}</span>
+            <span className="min-w-0 flex-1 break-words leading-snug [overflow-wrap:anywhere] line-clamp-2">
+              {tab.title}
+            </span>
             <button
               type="button"
               className={cn(

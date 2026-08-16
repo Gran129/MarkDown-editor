@@ -1,20 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 import { FileText, PenLine } from "lucide-react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileTreeSidebar } from "@/components/sidebar/FileTree";
 import { LinksPanel } from "@/components/backlinks/BacklinksPanel";
 import { TagsPanel } from "@/components/tags/TagsPanel";
 import { TabBar } from "@/components/layout/TabBar";
 import { TopBar } from "@/components/layout/TopBar";
+import { EditorWorkspace } from "@/components/layout/EditorWorkspace";
 import {
   ResizableSidebar,
   SIDEBAR_WIDTH_LIMITS,
   saveSidebarWidths,
 } from "@/components/layout/ResizableSidebar";
-import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
-import { SourceEditor } from "@/components/editor/SourceEditor";
-import { FrontmatterEditor } from "@/components/editor/FrontmatterEditor";
 import { OutlinePanel } from "@/components/editor/OutlinePanel";
 import { BlockRefPanel } from "@/components/editor/BlockRefPanel";
 import { FindReplaceDialog } from "@/components/editor/FindReplaceDialog";
@@ -68,7 +66,15 @@ export function AppLayout() {
 
   const noteNames = useMemo(() => flattenNoteNames(fileTree), [fileTree]);
 
-  const handleWikiLinkClick = async (target: string) => {
+  const handleFrontmatterChange = useCallback(
+    (frontmatter: Record<string, unknown>) => {
+      if (!activeTab) return;
+      updateTabContent(activeTab.path, activeTab.content, frontmatter);
+    },
+    [activeTab, updateTabContent],
+  );
+
+  const handleWikiLinkClick = useCallback(async (target: string) => {
     if (!vaultPath) return;
     const path = await resolveNotePath(vaultPath, target);
     if (path) {
@@ -81,9 +87,9 @@ export function AppLayout() {
       await refreshFileTree();
       await openFile(created);
     }
-  };
+  }, [vaultPath, viewMode, openFile, refreshFileTree]);
 
-  const handleEmbedClick = async (target: string) => {
+  const handleEmbedClick = useCallback(async (target: string) => {
     if (!vaultPath) return;
     const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(target);
     if (isImage) {
@@ -97,7 +103,12 @@ export function AppLayout() {
       return;
     }
     await handleWikiLinkClick(stripNoteExtension(target));
-  };
+  }, [vaultPath, activeTabPath, handleWikiLinkClick]);
+
+  const handleTagClick = useCallback(
+    (tag: string) => startTransition(() => setTagFilter(tag)),
+    [setTagFilter],
+  );
 
   const persistSidebarWidths = (left: number, right: number) => {
     saveSidebarWidths(left, right);
@@ -137,46 +148,16 @@ export function AppLayout() {
           )}
           {activeTab ? (
             <EditorErrorBoundary resetKey={activeTab.path}>
-              <>
-                {viewMode !== "source" && (
-                  <FrontmatterEditor
-                    frontmatter={activeTab.frontmatter}
-                    readOnly={viewMode === "reading"}
-                    onChange={(fm) =>
-                      updateTabContent(activeTab.path, activeTab.content, fm)
-                    }
-                  />
-                )}
-                <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                  {viewMode === "source" ? (
-                    <SourceEditor
-                      key={activeTab.path}
-                      path={activeTab.path}
-                      content={activeTab.content}
-                      frontmatter={activeTab.frontmatter}
-                      fontSize={settings.font_size}
-                      lineHeight={settings.line_height}
-                      autoSaveMs={settings.auto_save_ms}
-                    />
-                  ) : (
-                    <MarkdownEditor
-                      key={`${activeTab.path}-${viewMode}`}
-                      path={activeTab.path}
-                      content={activeTab.content}
-                      frontmatter={activeTab.frontmatter}
-                      fontSize={settings.font_size}
-                      lineHeight={settings.line_height}
-                      autoSaveMs={settings.auto_save_ms}
-                      noteNames={noteNames}
-                      editable={viewMode === "editing"}
-                      showToolbar={viewMode === "editing"}
-                      onWikiLinkClick={(t) => void handleWikiLinkClick(t)}
-                      onEmbedClick={(t) => void handleEmbedClick(t)}
-                      onTagClick={(tag) => setTagFilter(tag)}
-                    />
-                  )}
-                </div>
-              </>
+              <EditorWorkspace
+                activeTab={activeTab}
+                viewMode={viewMode}
+                settings={settings}
+                noteNames={noteNames}
+                onWikiLinkClick={handleWikiLinkClick}
+                onEmbedClick={handleEmbedClick}
+                onTagClick={handleTagClick}
+                onFrontmatterChange={handleFrontmatterChange}
+              />
             </EditorErrorBoundary>
           ) : (
             <WelcomeScreen />
@@ -196,11 +177,11 @@ export function AppLayout() {
             <Tabs
               value={rightPanelTab}
               onValueChange={(v) =>
-                setRightPanelTab(v as typeof rightPanelTab)
+                startTransition(() => setRightPanelTab(v as typeof rightPanelTab))
               }
               className="flex h-full flex-col"
             >
-              <TabsList className="mx-2 mt-2 grid w-auto grid-cols-4">
+              <TabsList className="mx-2 mt-2 grid w-auto grid-cols-2 gap-1 sm:grid-cols-4">
                 <TabsTrigger value="outline" className="text-xs">
                   大纲
                 </TabsTrigger>
@@ -214,18 +195,12 @@ export function AppLayout() {
                   板块
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="outline" className="flex-1 overflow-hidden">
-                <OutlinePanel />
-              </TabsContent>
-              <TabsContent value="links" className="flex-1 overflow-hidden">
-                <LinksPanel />
-              </TabsContent>
-              <TabsContent value="tags" className="flex-1 overflow-hidden">
-                <TagsPanel />
-              </TabsContent>
-              <TabsContent value="blockref" className="flex-1 overflow-hidden">
-                <BlockRefPanel />
-              </TabsContent>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {rightPanelTab === "outline" && <OutlinePanel />}
+                {rightPanelTab === "links" && <LinksPanel />}
+                {rightPanelTab === "tags" && <TagsPanel />}
+                {rightPanelTab === "blockref" && <BlockRefPanel />}
+              </div>
             </Tabs>
           </ResizableSidebar>
         )}

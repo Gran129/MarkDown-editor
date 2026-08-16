@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -34,16 +34,25 @@ export function ResizableSidebar({
   children,
 }: ResizableSidebarProps) {
   const startRef = useRef({ x: 0, width: 0 });
+  const [displayWidth, setDisplayWidth] = useState(width);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    if (!draggingRef.current) {
+      setDisplayWidth(width);
+    }
+  }, [width]);
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
-      startRef.current = { x: event.clientX, width };
+      startRef.current = { x: event.clientX, width: displayWidth };
+      draggingRef.current = true;
 
       const handleMouseMove = (e: MouseEvent) => {
         const delta =
           side === "left" ? e.clientX - startRef.current.x : startRef.current.x - e.clientX;
-        onWidthChange(clampWidth(startRef.current.width + delta, minWidth, maxWidth));
+        setDisplayWidth(clampWidth(startRef.current.width + delta, minWidth, maxWidth));
       };
 
       const handleMouseUp = (e: MouseEvent) => {
@@ -51,9 +60,13 @@ export function ResizableSidebar({
         document.removeEventListener("mouseup", handleMouseUp);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        draggingRef.current = false;
         const delta =
           side === "left" ? e.clientX - startRef.current.x : startRef.current.x - e.clientX;
-        onResizeEnd?.(clampWidth(startRef.current.width + delta, minWidth, maxWidth));
+        const finalWidth = clampWidth(startRef.current.width + delta, minWidth, maxWidth);
+        setDisplayWidth(finalWidth);
+        onWidthChange(finalWidth);
+        onResizeEnd?.(finalWidth);
       };
 
       document.body.style.cursor = "col-resize";
@@ -61,7 +74,7 @@ export function ResizableSidebar({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [side, minWidth, maxWidth, onWidthChange, onResizeEnd],
+    [side, minWidth, maxWidth, onWidthChange, onResizeEnd, displayWidth],
   );
 
   const handle = (
@@ -70,7 +83,7 @@ export function ResizableSidebar({
       aria-orientation="vertical"
       aria-valuemin={minWidth}
       aria-valuemax={maxWidth}
-      aria-valuenow={width}
+      aria-valuenow={displayWidth}
       aria-label={side === "left" ? "调整左侧栏宽度" : "调整右侧栏宽度"}
       onMouseDown={handleMouseDown}
       className={cn(
@@ -93,7 +106,7 @@ export function ResizableSidebar({
       {side === "right" && handle}
       <aside
         className={cn("h-full shrink-0 overflow-hidden", side === "left" ? "order-1" : "order-2")}
-        style={{ width }}
+        style={{ width: displayWidth }}
       >
         {children}
       </aside>

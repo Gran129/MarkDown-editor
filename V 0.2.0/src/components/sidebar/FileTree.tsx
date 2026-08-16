@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, startTransition } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -92,7 +92,9 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
     if (isDir) {
       setExpanded(!expanded);
     } else {
-      void openFile(node.path);
+      startTransition(() => {
+        void openFile(node.path);
+      });
     }
   };
 
@@ -186,7 +188,7 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => void handleDrop(e)}
             className={cn(
-              "relative flex cursor-pointer items-center gap-1.5 rounded-md py-1 pr-2 text-sm transition-colors hover:bg-accent/70",
+              "relative flex cursor-pointer items-start gap-1.5 rounded-md py-1 pr-2 text-sm transition-colors hover:bg-accent/70",
               isActive &&
                 "bg-primary/10 font-medium text-foreground before:absolute before:inset-y-1 before:left-0.5 before:w-0.5 before:rounded-full before:bg-primary",
             )}
@@ -212,7 +214,9 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             ) : (
               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
-            <span className="truncate">{node.name}</span>
+            <span className="min-w-0 flex-1 break-words leading-snug [overflow-wrap:anywhere]">
+              {node.name}
+            </span>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
@@ -409,8 +413,8 @@ export function FileTreeSidebar() {
       </div>
       <div className="flex-1 overflow-hidden">
         {tagFilter && (
-          <div className="mx-2 mt-2 flex items-center justify-between rounded-md bg-primary/10 px-2.5 py-1.5 text-xs text-foreground">
-            <span>筛选 #{tagFilter}</span>
+          <div className="mx-2 mt-2 flex flex-wrap items-center justify-between gap-1 rounded-md bg-primary/10 px-2.5 py-1.5 text-xs text-foreground">
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">筛选 #{tagFilter}</span>
             <button
               type="button"
               className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-background/70 hover:text-foreground"

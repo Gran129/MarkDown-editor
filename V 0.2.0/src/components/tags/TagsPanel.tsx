@@ -38,7 +38,7 @@ export function TagsPanel() {
               key={tag}
               type="button"
               className={cn(
-                "rounded-full px-2 py-0.5 text-xs transition-colors",
+                "max-w-full rounded-full px-2 py-0.5 text-xs transition-colors [overflow-wrap:anywhere]",
                 tagFilter === tag
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-accent",
@@ -62,7 +62,7 @@ export function TagsPanel() {
                 <li key={path}>
                   <button
                     type="button"
-                    className="text-sm text-primary hover:underline"
+                    className="text-left text-sm text-primary hover:underline [overflow-wrap:anywhere] break-words"
                     onClick={() => void openFile(path)}
                   >
                     {path.split(/[/\\]/).pop()}

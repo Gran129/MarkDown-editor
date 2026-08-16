@@ -364,13 +364,18 @@ export function MarkdownEditor({
 
   useEffect(() => {
     if (!editor) return;
-    void refreshSyncedBlockReferences(editor, path, (p) =>
-      tabsRef.current.find((t) => t.path === p)?.content,
-    );
+    const timer = window.setTimeout(() => {
+      void refreshSyncedBlockReferences(editor, path, (p) =>
+        tabsRef.current.find((t) => t.path === p)?.content,
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [editor, path]);
 
   useEffect(() => {
     if (!editor || !editorContainerRef.current) return;
+
+    let mermaidTimer: ReturnType<typeof setTimeout> | null = null;
 
     const renderMermaid = async () => {
       const blocks = editorContainerRef.current?.querySelectorAll("pre code.language-mermaid");
@@ -396,17 +401,27 @@ export function MarkdownEditor({
       }
     };
 
-    void renderMermaid();
-    editor.on("update", renderMermaid);
+    const scheduleMermaid = () => {
+      if (mermaidTimer) clearTimeout(mermaidTimer);
+      mermaidTimer = setTimeout(() => {
+        void renderMermaid();
+      }, 120);
+    };
+
+    scheduleMermaid();
+    editor.on("update", scheduleMermaid);
     return () => {
-      editor.off("update", renderMermaid);
+      if (mermaidTimer) clearTimeout(mermaidTimer);
+      editor.off("update", scheduleMermaid);
     };
   }, [editor]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
       {showToolbar && (
-        <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
+        <div className="w-full min-w-0 shrink-0 overflow-hidden">
+          <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
+        </div>
       )}
       {showToolbar && <TableMenu editor={editor} />}
       <div ref={editorContainerRef} className="relative min-h-0 flex-1 overflow-auto">

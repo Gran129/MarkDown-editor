@@ -56,12 +56,14 @@ export function LinksPanel() {
               <li key={bl.source_path}>
                 <button
                   type="button"
-                  className="text-sm font-medium text-primary hover:underline"
+                  className="text-left text-sm font-medium text-primary hover:underline [overflow-wrap:anywhere] break-words"
                   onClick={() => void openFile(bl.source_path)}
                 >
                   {bl.source_title}
                 </button>
-                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{bl.context}</p>
+                <p className="mt-0.5 line-clamp-3 break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+                  {bl.context}
+                </p>
               </li>
             ))}
           </ul>
@@ -79,7 +81,7 @@ export function LinksPanel() {
               <li key={link}>
                 <button
                   type="button"
-                  className="text-sm text-primary hover:underline"
+                  className="text-left text-sm text-primary hover:underline [overflow-wrap:anywhere] break-words"
                   onClick={() => void openWikiTarget(link)}
                 >
                   [[{link}]]

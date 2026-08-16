@@ -130,12 +130,14 @@ export function TopBar() {
       <Button
         variant="outline"
         size="sm"
-        className="ml-2 h-8 max-w-[240px] gap-1.5 rounded-full border-border/80 bg-muted/40 px-3 text-xs font-medium"
+        className="ml-2 h-auto min-h-8 max-w-[min(240px,28vw)] gap-1.5 rounded-full border-border/80 bg-muted/40 px-3 py-1.5 text-xs font-medium"
         onClick={() => void openVault()}
         title={displayPath ?? "打开 Vault"}
       >
-        <FolderOpen className="h-3.5 w-3.5 text-primary" />
-        <span className="truncate">{vaultName ?? "打开 Vault"}</span>
+        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span className="min-w-0 break-words text-left leading-snug [overflow-wrap:anywhere] line-clamp-2">
+          {vaultName ?? "打开 Vault"}
+        </span>
       </Button>
 
       <ChromeDivider />

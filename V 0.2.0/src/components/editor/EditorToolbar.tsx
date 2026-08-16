@@ -254,7 +254,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border/80 bg-muted/25 px-2 py-1">
+      <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center gap-x-0.5 gap-y-1 border-b border-border/80 bg-muted/25 px-2 py-1.5">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           title="撤销 (Ctrl+Z)"
@@ -568,8 +568,6 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         >
           <Search className="h-4 w-4" />
         </ToolbarButton>
-
-        <div className="flex-1" />
 
         {filePath && (
           <ToolbarButton

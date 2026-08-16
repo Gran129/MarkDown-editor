@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { startTransition } from "react";
 
 import {
   addRecentVault,
@@ -197,7 +198,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const { tabs } = get();
     const existing = tabs.find((t) => t.path === path);
     if (existing) {
-      set({ activeTabPath: path, fileOpenError: null });
+      startTransition(() => set({ activeTabPath: path, fileOpenError: null }));
       return;
     }
 
@@ -215,10 +216,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
         content: body,
         frontmatter,
       };
-      set({
-        tabs: [...tabs, tab],
-        activeTabPath: path,
-        fileOpenError: null,
+      startTransition(() => {
+        set({
+          tabs: [...get().tabs, tab],
+          activeTabPath: path,
+          fileOpenError: null,
+        });
       });
     } catch (error) {
       const message =
