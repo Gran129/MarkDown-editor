@@ -1,0 +1,56 @@
+name: Auto tag version
+
+# When the app version is bumped, create vX.Y.Z if it does not exist.
+# Pushing that tag starts "Release Windows", which builds installers and
+# uploads them to the GitHub Release.
+on:
+  push:
+    paths:
+      - "V 0.2.0/package.json"
+      - "V 0.2.0/src-tauri/tauri.conf.json"
+      - "V 0.2.0/src-tauri/Cargo.toml"
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag version if new
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'branch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create and push version tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./V 0.2.0/package.json').version")"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+          TAG="v${VERSION}"
+
+          PREV=""
+          if git cat-file -e "HEAD^:V 0.2.0/package.json" 2>/dev/null; then
+            PREV="$(git show HEAD^:"V 0.2.0/package.json" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{process.stdout.write(JSON.parse(s).version||'')}catch{}})")"
+          fi
+          if [[ -n "$PREV" && "$PREV" == "$VERSION" ]]; then
+            echo "Version unchanged ($VERSION); skip tagging"
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists on origin"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release ${TAG}"
+          git push origin "$TAG"
+          echo "Pushed ${TAG} (was ${PREV:-none} -> ${VERSION})"
