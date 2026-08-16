@@ -1,8 +1,9 @@
 name: Auto tag version
 
 # When the app version is bumped, create vX.Y.Z if it does not exist.
-# Pushing that tag starts "Release Windows", which builds installers and
-# uploads them to the GitHub Release.
+# GITHUB_TOKEN tag pushes do not start other workflows, so this job also
+# dispatches "Release Windows" on the new tag. That workflow builds
+# installers and uploads them to the GitHub Release.
 on:
   push:
     paths:
@@ -12,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   tag:
@@ -26,6 +28,7 @@ jobs:
       - name: Create and push version tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./V 0.2.0/package.json').version")"
@@ -54,3 +57,9 @@ jobs:
           git tag -a "$TAG" -m "Release ${TAG}"
           git push origin "$TAG"
           echo "Pushed ${TAG} (was ${PREV:-none} -> ${VERSION})"
+
+          # Tag pushes made with GITHUB_TOKEN do not start other workflows.
+          # workflow_dispatch is the documented exception, so kick Release
+          # Windows on the new tag (github.ref stays refs/tags/vX.Y.Z).
+          gh workflow run release.yml --ref "$TAG"
+          echo "Dispatched Release Windows for ${TAG}"
