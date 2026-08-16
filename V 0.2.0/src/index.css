@@ -273,7 +273,14 @@
 .tiptap .hljs-class .hljs-title { color: oklch(0.5 0.12 220); }
 .tiptap .hljs-built_in,
 .tiptap .hljs-builtin-name { color: oklch(0.55 0.14 20); }
-.tiptap code { font-family: ui-monospace, monospace; font-size: 0.875em; }
+.tiptap :not(pre) > code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.875em;
+  background: color-mix(in oklch, var(--muted) 82%, var(--foreground) 6%);
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  padding: 0.12em 0.4em;
+}
 .tiptap table {
   border-collapse: collapse;
   width: 100%;

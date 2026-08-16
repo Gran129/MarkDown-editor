@@ -1,13 +1,14 @@
 import type { EditorView } from "@tiptap/pm/view";
 
+import { getResourceDrag, isResourceDragEvent } from "@/lib/resource-drag";
+
 export function isResourceDrag(event: DragEvent): boolean {
-  const types = Array.from(event.dataTransfer?.types ?? []);
-  if (types.includes("text/resource-path")) return true;
-  const plain = event.dataTransfer?.getData("text/plain") ?? "";
-  return plain.includes(".resources/");
+  return Boolean(getResourceDrag()) || isResourceDragEvent(event);
 }
 
 export function resourcePathFromEvent(event: DragEvent): string {
+  const active = getResourceDrag();
+  if (active) return active;
   const typed = event.dataTransfer?.getData("text/resource-path")?.trim() ?? "";
   if (typed.includes(".resources/")) return typed;
   const plain = event.dataTransfer?.getData("text/plain")?.trim() ?? "";

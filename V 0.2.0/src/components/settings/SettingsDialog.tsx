@@ -58,16 +58,25 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setSettingsOpen}>
-      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0">
+      <DialogContent
+        className="flex max-h-[85vh] min-h-[28rem] max-w-lg flex-col gap-0 overflow-hidden p-0"
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+        onFocusOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>设置</DialogTitle>
         </DialogHeader>
         <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
-          <TabsList className="mx-6 mt-3 grid w-auto grid-cols-2">
-            <TabsTrigger value="general">常规</TabsTrigger>
-            <TabsTrigger value="editor">编辑</TabsTrigger>
+          <TabsList className="relative z-10 mx-6 mt-3 grid w-auto shrink-0 grid-cols-2">
+            <TabsTrigger value="general" className="min-w-[4.5rem]">常规</TabsTrigger>
+            <TabsTrigger value="editor" className="min-w-[4.5rem]">编辑</TabsTrigger>
           </TabsList>
-          <TabsContent value="general" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <TabsContent
+            value="general"
+            forceMount
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 data-[state=inactive]:hidden"
+          >
           <EditionBadge info={editionInfo} />
           <div>
             <label className="text-sm font-medium">主题</label>
@@ -205,7 +214,7 @@ export function SettingsDialog() {
             </span>
           </label>
           </TabsContent>
-          <TabsContent value="editor" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <TabsContent value="editor" forceMount className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 data-[state=inactive]:hidden">
             <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
               <p className="text-sm font-medium">代码块</p>
               <label className="flex items-start gap-2 text-sm">

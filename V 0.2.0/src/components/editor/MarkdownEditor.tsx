@@ -45,6 +45,7 @@ import { preprocessMarkdown } from "@/lib/markdown-transform";
 import { refreshSameFileBlockReferences, refreshSyncedBlockReferences } from "@/lib/block-sync";
 import { createWikiLinkSuggestionRenderer } from "@/lib/suggestion-renderer";
 import { insertEmbedAtPoint, isResourceDrag, resourcePathFromEvent } from "@/lib/insert-embed";
+import { endResourceDrag, getResourceDrag } from "@/lib/resource-drag";
 import { cn } from "@/lib/utils";
 
 import { EditorToolbar } from "./EditorToolbar";
@@ -421,6 +422,36 @@ export function MarkdownEditor({
   }, [editor, fontSize, lineHeight, active]);
 
   useEffect(() => {
+    const onOver = (event: DragEvent) => {
+      if (!getResourceDrag()) return;
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(".editor-drop-surface, .tiptap")) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    };
+    const onDrop = (event: DragEvent) => {
+      const resource = resourcePathFromEvent(event);
+      if (!resource) return;
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(".editor-drop-surface, .tiptap")) return;
+      const ed = editorRef.current;
+      if (!ed || ed.isDestroyed) return;
+      event.preventDefault();
+      insertEmbedAtPoint(ed.view, event.clientX, event.clientY, resource);
+      endResourceDrag();
+    };
+    const onEnd = () => endResourceDrag();
+    window.addEventListener("dragover", onOver);
+    window.addEventListener("drop", onDrop);
+    window.addEventListener("dragend", onEnd);
+    return () => {
+      window.removeEventListener("dragover", onOver);
+      window.removeEventListener("drop", onDrop);
+      window.removeEventListener("dragend", onEnd);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!editor || !active) return;
     const timer = window.setTimeout(() => {
       void refreshSyncedBlockReferences(editor, path, (p) =>
@@ -449,7 +480,19 @@ export function MarkdownEditor({
       </div>
       <div
         ref={editorContainerRef}
-        className="relative min-h-0 flex-1 overflow-auto"
+        className="editor-drop-surface relative min-h-0 flex-1 overflow-auto"
+        onDragOver={(event) => {
+          if (!isResourceDrag(event.nativeEvent)) return;
+          event.preventDefault();
+          if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        }}
+        onDrop={(event) => {
+          const resource = resourcePathFromEvent(event.nativeEvent);
+          if (!resource || !editor || editor.isDestroyed) return;
+          event.preventDefault();
+          insertEmbedAtPoint(editor.view, event.clientX, event.clientY, resource);
+          endResourceDrag();
+        }}
         onDragLeave={() => {
           if (dropCaretRef.current) dropCaretRef.current.style.display = "none";
         }}

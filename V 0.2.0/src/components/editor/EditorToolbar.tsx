@@ -36,6 +36,7 @@ import {
   AlignJustify,
   ChevronDown,
   Blocks,
+  Palette,
   Upload,
   Globe,
   FileSpreadsheet,
@@ -55,7 +56,9 @@ import { generateBlockId } from "@/lib/block-utils";
 import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { MarkColorMenu } from "@/components/editor/MarkColorMenu";
-import { CodeBlockColorMenu, pickLocalImagePath } from "@/components/editor/CodeBlockColorMenu";
+import { pickLocalImagePath } from "@/components/editor/CodeBlockColorMenu";
+import { CODE_LANGUAGES } from "@/components/editor/CodeBlockView";
+import { MARK_COLOR_PRESETS } from "@/extensions/markdown-marks";
 import { copyIntoNoteResources } from "@/lib/tauri-api";
 import { applyToolbarCodeBlock } from "@/lib/code-block-command";
 import { MEDIA_DIALOG_EXTENSIONS } from "@/lib/file-kinds";
@@ -64,6 +67,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -103,6 +108,96 @@ const HEADING_TITLES: Record<number, string> = {
   5: "五级标题（#####）",
   6: "六级标题（######）",
 };
+
+function CodeToolbarExtras({ editor }: { editor: Editor }) {
+  const isBlock = editor.isActive("codeBlock");
+  const isInline = editor.isActive("code");
+  if (!isBlock && !isInline) return null;
+
+  const blockLang = (editor.getAttributes("codeBlock").language as string | null) || "plaintext";
+  const inlineLang = (editor.getAttributes("code").language as string | null) || "plaintext";
+  const language = isBlock ? blockLang : inlineLang;
+  const isMermaid = isBlock && blockLang === "mermaid";
+  const langs = CODE_LANGUAGES.filter((item) => isBlock || item.id !== "mermaid");
+
+  const setLanguage = (next: string) => {
+    if (isBlock) {
+      editor.chain().focus().updateAttributes("codeBlock", { language: next }).run();
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("code")
+      .setMark("code", { ...editor.getAttributes("code"), language: next })
+      .run();
+  };
+
+  const setColor = (color: string | null) => {
+    if (isBlock) {
+      editor.chain().focus().updateAttributes("codeBlock", { blockColor: color }).run();
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("code")
+      .setMark("code", { ...editor.getAttributes("code"), color })
+      .run();
+  };
+
+  return (
+    <>
+      <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
+      {!isMermaid && (
+        <select
+          className="h-7 max-w-[7.25rem] rounded-md border border-border bg-background px-1 text-[11px]"
+          value={langs.some((item) => item.id === language) ? language : language || "plaintext"}
+          aria-label="代码语言"
+          title="代码语言"
+          onMouseDown={(event) => event.stopPropagation()}
+          onChange={(event) => setLanguage(event.target.value)}
+        >
+          {!langs.some((item) => item.id === language) && language ? (
+            <option value={language}>{language}</option>
+          ) : null}
+          {langs.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      )}
+      <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-7" title="代码颜色">
+            <Palette className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuLabel className="text-xs">
+            {isBlock ? "代码块背景" : "行内代码颜色"}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {MARK_COLOR_PRESETS.map((preset) => (
+            <DropdownMenuItem key={preset.label} onClick={() => setColor(preset.value)}>
+              {preset.value ? (
+                <span
+                  className="mr-2 inline-block h-3 w-3 rounded-sm border border-border"
+                  style={{ backgroundColor: preset.value }}
+                />
+              ) : (
+                <span className="mr-2 inline-block h-3 w-3 rounded-sm border border-dashed border-border" />
+              )}
+              {preset.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
 
 function ToolbarButton({
   onClick,
@@ -513,19 +608,21 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         >
           <Quote className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton
-          onClick={() =>
-            applyToolbarCodeBlock(editor, {
-              inlineOnSelection: settings.code_inline_on_selection,
-              mergeParagraphs: settings.code_merge_paragraphs,
-            })
-          }
-          active={editor.isActive("codeBlock") || editor.isActive("code")}
-          title="代码块"
-        >
-          <Code className="h-4 w-4" />
-        </ToolbarButton>
-        {editor.isActive("codeBlock") && <CodeBlockColorMenu editor={editor} />}
+        <div className="inline-flex shrink-0 items-center">
+          <ToolbarButton
+            onClick={() =>
+              applyToolbarCodeBlock(editor, {
+                inlineOnSelection: settings.code_inline_on_selection,
+                mergeParagraphs: settings.code_merge_paragraphs,
+              })
+            }
+            active={editor.isActive("codeBlock") || editor.isActive("code")}
+            title="代码块"
+          >
+            <Code className="h-4 w-4" />
+          </ToolbarButton>
+          <CodeToolbarExtras editor={editor} />
+        </div>
         <ToolbarButton
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
           title="分隔线"

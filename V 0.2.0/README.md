@@ -4,14 +4,14 @@
 
 仓库：[Gran129/MarkDown-editor](https://github.com/Gran129/MarkDown-editor)
 
-## 下载（Windows v0.2.1）
+## 下载（Windows v0.2.7）
 
 | 文件 | 类型 | 说明 |
 |------|------|------|
-| `MarkDown-editor_0.2.1_x64-setup.exe` | 安装包联网版 | 联网时自动检查 GitHub 更新 |
-| `MarkDown-editor_0.2.1_portable.exe` | 便携版本地版 | 不参与更新检测，可完全离线 |
+| `MarkDown-editor_0.2.7_x64-setup.exe` | 安装包联网版 | 联网时自动检查 GitHub 更新 |
+| `MarkDown-editor_0.2.7_portable.exe` | 便携版本地版 | 不参与更新检测，可完全离线 |
 
-安装包发布在 [GitHub Releases v0.2.1](https://github.com/Gran129/MarkDown-editor/releases/tag/v0.2.1)。仓库 [`releases/`](../releases/) 目录含安装说明；本地打包产物也会复制到该目录。
+安装包发布在 [GitHub Releases v0.2.7](https://github.com/Gran129/MarkDown-editor/releases/tag/v0.2.7)。仓库 [`releases/`](../releases/) 目录含安装说明；本地打包产物也会复制到该目录。
 
 > 需要 **Windows 10/11** 与 **WebView2** 运行时。
 
@@ -134,7 +134,25 @@ Windows 一键打包（需在 Windows 上执行，产物写入仓库根目录 `r
 
 ## 更新记录
 
-> **维护说明**：每次功能变更、缺陷修复或版本发布时，请在本节**最上方**追加条目，并保持与 `package.json` / `Cargo.toml` / `tauri.conf.json` 中的版本号一致。
+> **维护说明**：每次功能变更、缺陷修复或版本发布时，请在本节**最上方**追加条目，并保持与 `package.json` / `Cargo.toml` / `tauri.conf.json` 中的版本号一致。修改这些版本号并推送后，会自动打标签、打包并上传到 GitHub Releases。
+
+### v0.2.7
+
+**发布**
+
+- 安装包：`MarkDown-editor_0.2.7_x64-setup.exe`；便携版：`MarkDown-editor_0.2.7_portable.exe`
+- 版本号变更后自动打 `v*` 标签并触发 Windows 打包与 Release 上传
+
+**相对 v0.2.6**
+
+- 设置分为「常规 / 编辑」；代码块支持段落内行内代码、多段落合并为一个代码块
+- 修复分栏拖动手柄滚动与 Mermaid 11 全局 Syntax error 横幅
+- Mermaid 代码块锁定语言，输入时实时预览（语法不完整时保留上一张正确图）
+- 支持 PDF / XMind 预览与编辑；与 Office 共用导入按钮；可新建并原生编辑 XMind
+- 打开非 Markdown 文件时关闭语法视窗
+- 左侧栏资源栏（笔记 `.resources`）：拖入、拖到正文插入预览与定位
+- 文件预览块高亮、插入前提示、移除 / 移动 / 展开收起
+- 有序列表 Enter 下一项；项首 Backspace 去掉序号并入上一项，再按一次退出列表
 
 ### v0.2.1
 
