@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FileText, PenLine } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileTreeSidebar } from "@/components/sidebar/FileTree";
@@ -100,7 +101,7 @@ export function AppLayout() {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <TopBar />
       <div className="flex flex-1 overflow-hidden">
         {leftSidebarOpen && (
@@ -173,7 +174,7 @@ export function AppLayout() {
             maxWidth={SIDEBAR_WIDTH_LIMITS.right.max}
             onWidthChange={setRightPanelWidth}
             onResizeEnd={(w) => persistSidebarWidths(leftSidebarWidth, w)}
-            className="border-l border-border bg-background"
+            className="border-l border-sidebar-border bg-sidebar text-sidebar-foreground"
           >
             <Tabs
               value={rightPanelTab}
@@ -237,49 +238,69 @@ function WelcomeScreen() {
 
   if (vaultPath) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-        <h1 className="text-xl font-semibold">选择笔记开始编辑</h1>
-        <p className="max-w-md text-sm text-muted-foreground">
-          从左侧文件树中点击一个笔记，或新建笔记后开始写作。
-        </p>
+      <div className="flex flex-1 flex-col items-center justify-center p-8">
+        <div className="w-full max-w-md rounded-2xl border border-border/80 bg-card p-8 text-center shadow-sm">
+          <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <FileText className="h-6 w-6" />
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight">选择笔记开始编辑</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            从左侧文件树中点击一个笔记，或新建笔记后开始写作。
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-      <h1 className="text-2xl font-bold">MarkDown 编辑器</h1>
-        <p className="max-w-md text-muted-foreground">
-          语法、阅读、Word 式编辑三种视图。Obsidian 式 Vault 文件管理。打开一个文件夹作为知识库开始写作。
+    <div className="welcome-canvas flex flex-1 flex-col items-center justify-center p-8">
+      <div className="w-full max-w-lg rounded-2xl border border-border/80 bg-card p-8 text-center shadow-sm">
+        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+          <PenLine className="h-6 w-6" />
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight">MarkDown 编辑器</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+          语法、阅读、Word 式编辑三种视图。打开一个文件夹作为知识库开始写作。
         </p>
-      <button
-        type="button"
-        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-        onClick={() => void openVault()}
-      >
-        打开 Vault
-      </button>
-      {recent.length > 0 && (
-        <div className="mt-4 w-full max-w-md text-left">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            最近打开
-          </p>
-          <ul className="space-y-1">
-            {recent.map((vault) => (
-              <li key={vault.path}>
-                <button
-                  type="button"
-                  className="w-full rounded-md px-3 py-2 text-left hover:bg-accent"
-                  onClick={() => void openVault(vault.path)}
-                >
-                  <div className="text-sm font-medium">{vault.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">{vault.path}</div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        <button
+          type="button"
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          onClick={() => void openVault()}
+        >
+          打开 Vault
+        </button>
+        {recent.length > 0 && (
+          <div className="mt-6 w-full text-left">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              最近打开
+            </p>
+            <ul className="space-y-1">
+              {recent.map((vault) => (
+                <li key={vault.path}>
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/70"
+                    onClick={() => void openVault(vault.path)}
+                  >
+                    <div className="text-sm font-medium">{vault.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">{vault.path}</div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="mt-6 text-xs text-muted-foreground">
+          <kbd className="app-kbd">Ctrl</kbd>
+          <span className="mx-1">+</span>
+          <kbd className="app-kbd">O</kbd>
+          <span className="mx-2">快速切换</span>
+          <kbd className="app-kbd">Ctrl</kbd>
+          <span className="mx-1">+</span>
+          <kbd className="app-kbd">S</kbd>
+          <span className="ml-1">保存</span>
+        </p>
+      </div>
     </div>
   );
 }

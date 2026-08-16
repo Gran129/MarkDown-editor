@@ -99,7 +99,7 @@ export function ExportDialog() {
                 className={cn(
                   "flex gap-3 rounded-lg border p-3 text-left transition-colors",
                   selected
-                    ? "border-primary bg-accent"
+                    ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                     : "border-border hover:bg-accent/50",
                 )}
                 aria-pressed={selected}

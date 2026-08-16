@@ -4,14 +4,14 @@
 
 仓库：[Gran129/MarkDown-editor](https://github.com/Gran129/MarkDown-editor)
 
-## 下载（Windows v0.2.0）
+## 下载（Windows v0.2.1）
 
 | 文件 | 类型 | 说明 |
 |------|------|------|
-| `MarkDown-editor_0.2.0_x64-setup.exe` | 安装包联网版 | 联网时自动检查 GitHub 更新 |
-| `MarkDown-editor_0.2.0_portable.exe` | 便携版本地版 | 不参与更新检测，可完全离线 |
+| `MarkDown-editor_0.2.1_x64-setup.exe` | 安装包联网版 | 联网时自动检查 GitHub 更新 |
+| `MarkDown-editor_0.2.1_portable.exe` | 便携版本地版 | 不参与更新检测，可完全离线 |
 
-本地打包产物位于 `release/` 目录，详见 `INSTALL.zh-CN.txt`。
+安装包发布在 [GitHub Releases v0.2.1](https://github.com/Gran129/MarkDown-editor/releases/tag/v0.2.1)。仓库 [`releases/`](../releases/) 目录含安装说明；本地打包产物也会复制到该目录。
 
 > 需要 **Windows 10/11** 与 **WebView2** 运行时。
 
@@ -90,11 +90,13 @@ npm run tauri build
 - macOS: `.dmg` / `.app`
 - Linux: `.AppImage` / `.deb`
 
-Windows 一键打包：
+Windows 一键打包（需在 Windows 上执行，产物写入仓库根目录 `releases/`）：
 
-```bash
-npm run build:win
+```powershell
+.\scripts\build-all-versions.ps1
 ```
+
+打 `v*` 标签并推送后，GitHub Actions 会自动构建并把 exe 上传到 GitHub Releases。
 
 ## 快捷键
 
@@ -133,6 +135,19 @@ npm run build:win
 ## 更新记录
 
 > **维护说明**：每次功能变更、缺陷修复或版本发布时，请在本节**最上方**追加条目，并保持与 `package.json` / `Cargo.toml` / `tauri.conf.json` 中的版本号一致。
+
+### v0.2.1
+
+**发布**
+
+- Windows 安装包与便携版改由 GitHub Actions 自动构建，上传到 GitHub Releases，说明文件放在仓库 `releases/` 目录
+- 安装包：`MarkDown-editor_0.2.1_x64-setup.exe`；便携版：`MarkDown-editor_0.2.1_portable.exe`
+
+**相对 v0.2.0 安装包包含的后续改动**
+
+- 项目工作文件夹：保存明文 `.md`，导出时再选择 Markdown 或加密 `.mdte`
+- 笔记内预览 Word / Excel / PowerPoint
+- 编辑器界面视觉打磨
 
 ### v0.2.0
 

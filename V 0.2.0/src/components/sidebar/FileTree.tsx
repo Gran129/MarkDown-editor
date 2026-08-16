@@ -186,8 +186,9 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => void handleDrop(e)}
             className={cn(
-              "flex cursor-pointer items-center gap-1 rounded px-2 py-0.5 text-sm hover:bg-accent",
-              isActive && "bg-accent text-accent-foreground",
+              "relative flex cursor-pointer items-center gap-1.5 rounded-md py-1 pr-2 text-sm transition-colors hover:bg-accent/70",
+              isActive &&
+                "bg-primary/10 font-medium text-foreground before:absolute before:inset-y-1 before:left-0.5 before:w-0.5 before:rounded-full before:bg-primary",
             )}
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
             onClick={handleClick}
@@ -363,7 +364,8 @@ export function FileTreeSidebar() {
 
   if (!vaultPath) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-sm text-muted-foreground">
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+        <FolderOpen className="h-9 w-9 text-primary/50" />
         <p>尚未打开 Vault</p>
         <Button size="sm" onClick={() => void openVault()}>
           打开 Vault
@@ -374,8 +376,8 @@ export function FileTreeSidebar() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-sidebar-border px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="flex h-9 items-center justify-between border-b border-sidebar-border px-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           文件
         </span>
         <div className="flex gap-1">
@@ -406,15 +408,25 @@ export function FileTreeSidebar() {
       </div>
       <div className="flex-1 overflow-hidden">
         {tagFilter && (
-          <div className="flex items-center justify-between px-3 py-1.5 text-xs text-muted-foreground">
+          <div className="mx-2 mt-2 flex items-center justify-between rounded-md bg-primary/10 px-2.5 py-1.5 text-xs text-foreground">
             <span>筛选 #{tagFilter}</span>
-            <button type="button" className="hover:text-foreground" onClick={() => setTagFilter(null)}>
+            <button
+              type="button"
+              className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-background/70 hover:text-foreground"
+              onClick={() => setTagFilter(null)}
+            >
               清除
             </button>
           </div>
         )}
         {tagFilter && visibleTree.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground">没有带该标签的笔记</p>
+        ) : visibleTree.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-xs text-muted-foreground">
+            <FileText className="h-8 w-8 opacity-40" />
+            <p>此知识库还没有笔记</p>
+            <p>点击上方图标新建第一篇</p>
+          </div>
         ) : (
           <FileTree nodes={visibleTree} vaultPath={vaultPath} />
         )}

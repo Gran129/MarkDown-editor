@@ -1,0 +1,76 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Build Windows installers
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: V 0.2.0/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "V 0.2.0/src-tauri"
+
+      - name: Install frontend dependencies
+        working-directory: "V 0.2.0"
+        run: npm ci
+
+      - name: Build Tauri NSIS installer
+        working-directory: "V 0.2.0"
+        run: npm run tauri build
+        env:
+          CI: true
+
+      - name: Collect artifacts into releases/
+        shell: pwsh
+        run: |
+          Set-Location "V 0.2.0"
+          ./scripts/collect-windows-release.ps1
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-releases
+          path: |
+            releases/MarkDown-editor_*.exe
+            releases/MarkDown-editor.portable
+            releases/INSTALL.zh-CN.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            releases/MarkDown-editor_*.exe
+            releases/MarkDown-editor.portable
+            releases/INSTALL.zh-CN.txt
+          body: |
+            Windows 安装包（v0.2.1）
+
+            - **安装包联网版**：`MarkDown-editor_0.2.1_x64-setup.exe` — 双击安装到电脑
+            - **便携版本地版**：`MarkDown-editor_0.2.1_portable.exe` — 免安装，可离线使用
+
+            安装说明见 `INSTALL.zh-CN.txt`。需要 Windows 10/11 64 位与 WebView2。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

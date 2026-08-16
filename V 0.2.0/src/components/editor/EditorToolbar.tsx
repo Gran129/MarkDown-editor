@@ -107,7 +107,7 @@ function ToolbarButton({
       type="button"
       variant="ghost"
       size="icon"
-      className={cn("h-8 w-8", active && "bg-accent")}
+      className={cn("h-8 w-8 rounded-md", active && "bg-primary/10 text-primary")}
       onClick={onClick}
       title={title}
       aria-label={title}
@@ -254,7 +254,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1">
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-border/80 bg-muted/25 px-2 py-1">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           title="撤销 (Ctrl+Z)"

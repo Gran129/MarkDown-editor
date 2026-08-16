@@ -25,7 +25,7 @@ export function ViewModeSwitch() {
     <div
       role="radiogroup"
       aria-label="编辑器视图"
-      className="inline-flex h-7 items-center rounded-md border border-input p-0.5"
+      className="inline-flex h-8 items-center rounded-lg border border-border/80 bg-muted/50 p-0.5"
     >
       {MODES.map((mode) => {
         const Icon = mode.icon;
@@ -39,10 +39,10 @@ export function ViewModeSwitch() {
             disabled={disabled}
             title={mode.hint}
             className={cn(
-              "inline-flex h-6 items-center gap-1 rounded px-2 text-xs font-medium transition-colors",
+              "inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors",
               selected
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
               disabled && "opacity-50",
             )}
             onClick={() => setViewMode(mode.id)}
