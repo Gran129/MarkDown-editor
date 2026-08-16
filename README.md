@@ -1,7 +1,7 @@
 # MarkDown 编辑器
 
-当前开发版本：**V 0.2.0 源码目录**（应用版本 **0.2.7**，源码位于 [`V 0.2.0/`](V%200.2.0/)）
+当前开发版本：**V 0.2.0 源码目录**（应用版本 **0.2.8**，源码位于 [`V 0.2.0/`](V%200.2.0/)）
 
-- 下载 Windows 安装包与便携版：[GitHub Releases v0.2.7](https://github.com/Gran129/MarkDown-editor/releases/tag/v0.2.7)
+- 下载 Windows 安装包与便携版：[GitHub Releases v0.2.8](https://github.com/Gran129/MarkDown-editor/releases/tag/v0.2.8)
 - 发行说明：[`releases/`](releases/)
 - 开发与构建说明：见 [`V 0.2.0/README.md`](V%200.2.0/README.md)

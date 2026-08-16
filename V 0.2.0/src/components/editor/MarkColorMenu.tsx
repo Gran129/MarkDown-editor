@@ -69,48 +69,58 @@ export function MarkColorMenu({
   icon,
 }: MarkColorMenuProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className={cn("h-8 w-9 rounded-md", active && "bg-primary/10 text-primary")}
-          title={`${title}（点击选择颜色或开关）`}
-          aria-label={title}
-        >
-          {icon}
-          <ChevronDown className="ml-0.5 h-2.5 w-2.5 opacity-70" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-40">
-        <DropdownMenuLabel className="text-xs">{title}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onToggle}>{active ? `取消${title}` : `应用${title}`}</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs">颜色</DropdownMenuLabel>
-        {MARK_COLOR_PRESETS.map((preset) => (
-          <DropdownMenuItem
-            key={preset.label}
-            onClick={() => {
-              if (!editor.isActive(mark)) {
-                onToggle();
-              }
-              applyMarkColor(editor, mark, preset.value);
-            }}
+    <div className="inline-flex h-8 shrink-0 items-center">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={cn("h-8 w-7 rounded-md rounded-r-none", active && "bg-primary/10 text-primary")}
+        title={title}
+        aria-label={title}
+        onClick={onToggle}
+      >
+        {icon}
+      </Button>
+      <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-5 rounded-md rounded-l-none px-0"
+            title={`${title}颜色`}
+            aria-label={`${title}颜色`}
           >
-            {preset.value ? (
-              <span
-                className="mr-2 inline-block h-3 w-3 rounded-sm border border-border"
-                style={{ backgroundColor: preset.value }}
-              />
-            ) : (
-              <span className="mr-2 inline-block h-3 w-3 rounded-sm border border-dashed border-border" />
-            )}
-            {preset.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <ChevronDown className="h-3 w-3 opacity-80" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuLabel className="text-xs">{title}颜色</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {MARK_COLOR_PRESETS.map((preset) => (
+            <DropdownMenuItem
+              key={preset.label}
+              onClick={() => {
+                if (!editor.isActive(mark)) {
+                  onToggle();
+                }
+                applyMarkColor(editor, mark, preset.value);
+              }}
+            >
+              {preset.value ? (
+                <span
+                  className="mr-2 inline-block h-3 w-3 rounded-sm border border-border"
+                  style={{ backgroundColor: preset.value }}
+                />
+              ) : (
+                <span className="mr-2 inline-block h-3 w-3 rounded-sm border border-dashed border-border" />
+              )}
+              {preset.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

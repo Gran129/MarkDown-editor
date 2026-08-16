@@ -169,36 +169,55 @@ export const MarkdownCode = Code.extend({
     return {
       ...this.parent?.(),
       ...colorAttribute,
+      language: {
+        default: "plaintext" as string,
+        parseHTML: (el: HTMLElement) =>
+          el.getAttribute("data-language") ||
+          (el.className.match(/language-([a-z0-9+#-]+)/i)?.[1] ?? "plaintext"),
+        renderHTML: (attrs: { language?: string | null }) =>
+          attrs.language && attrs.language !== "plaintext"
+            ? {
+                "data-language": attrs.language,
+                class: `hljs language-${attrs.language}`,
+              }
+            : {},
+      },
     };
   },
 
   parseHTML() {
     return [
-      { tag: "code" },
       {
-        tag: "code[data-mded-code]",
-        getAttrs: (el) => ({
-          color: (el as HTMLElement).getAttribute("data-color"),
-        }),
+        tag: "code",
+        getAttrs: (el) => {
+          const node = el as HTMLElement;
+          if (node.parentElement?.tagName === "PRE") return false;
+          return {
+            color: node.getAttribute("data-color"),
+            language:
+              node.getAttribute("data-language") ||
+              (node.className.match(/language-([a-z0-9+#-]+)/i)?.[1] ?? "plaintext"),
+          };
+        },
       },
     ];
   },
 
   renderHTML({ mark, HTMLAttributes }) {
     const color = mark.attrs.color as string | null;
-    if (color) {
-      return [
-        "code",
-        {
-          ...HTMLAttributes,
-          "data-mded-code": "true",
-          "data-color": color,
-          style: `color:${color}`,
-        },
-        0,
-      ];
-    }
-    return ["code", HTMLAttributes, 0];
+    const language = (mark.attrs.language as string | null) || "plaintext";
+    return [
+      "code",
+      {
+        ...HTMLAttributes,
+        "data-mded-code": "true",
+        ...(color ? { "data-color": color, style: `color:${color}` } : {}),
+        ...(language && language !== "plaintext"
+          ? { "data-language": language, class: `hljs language-${language}` }
+          : {}),
+      },
+      0,
+    ];
   },
 });
 

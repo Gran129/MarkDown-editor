@@ -14,9 +14,6 @@ import {
   ExternalLink,
   Download,
   GitBranch,
-  FileSpreadsheet,
-  Presentation,
-  File,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -57,8 +54,9 @@ import {
   nativeNoteFileName,
   stripNoteExtension,
 } from "@/lib/note-format";
-import { isOpenableFileName, openableKindFromPath } from "@/lib/file-kinds";
+import { isOpenableFileName } from "@/lib/file-kinds";
 import { ResourcesPanel } from "@/components/sidebar/ResourcesPanel";
+import { FileTypeIcon } from "@/components/sidebar/FileTypeIcon";
 
 interface FileTreeProps {
   nodes: FileNode[];
@@ -71,19 +69,6 @@ type PromptKind = "new-note" | "new-folder" | "new-xmind" | "rename";
 interface PromptState {
   kind: PromptKind;
   defaultValue?: string;
-}
-
-function fileIcon(name: string) {
-  const kind = openableKindFromPath(name);
-  if (kind === "pdf") return File;
-  if (kind === "xmind") return GitBranch;
-  if (kind === "office") {
-    const ext = extensionOf(name);
-    if (ext === "xlsx" || ext === "xls") return FileSpreadsheet;
-    if (ext === "pptx" || ext === "ppt") return Presentation;
-    return FileText;
-  }
-  return FileText;
 }
 
 function getParentPath(node: FileNode): string {
@@ -266,10 +251,7 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
                 <Folder className="h-4 w-4 shrink-0 text-primary" />
               )
             ) : (
-              (() => {
-                const Icon = fileIcon(node.name);
-                return <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />;
-              })()
+              <FileTypeIcon name={node.name} />
             )}
             <span className="min-w-0 flex-1 break-words leading-snug [overflow-wrap:anywhere]">
               {node.name}
