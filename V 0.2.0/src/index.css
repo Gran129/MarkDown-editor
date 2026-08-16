@@ -518,6 +518,7 @@
 .source-editor {
   display: block;
   width: 100%;
+  min-height: 0;
   height: 100%;
   resize: none;
   border: 0;
@@ -527,8 +528,11 @@
   color: var(--foreground);
   font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Consolas", monospace;
   tab-size: 2;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   overflow: auto;
+  box-sizing: border-box;
 }
 
 .math-block {

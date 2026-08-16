@@ -66,13 +66,14 @@ jobs:
             releases/MarkDown-editor.portable
             releases/INSTALL.zh-CN.txt
           body: |
-            Windows 安装包（v0.2.2）
+            Windows 安装包（v0.2.3）
 
-            - **安装包联网版**：`MarkDown-editor_0.2.2_x64-setup.exe` — 双击安装到电脑
-            - **便携版本地版**：`MarkDown-editor_0.2.2_portable.exe` — 免安装，可离线使用
+            - **安装包联网版**：`MarkDown-editor_0.2.3_x64-setup.exe` — 双击安装到电脑
+            - **便携版本地版**：`MarkDown-editor_0.2.3_portable.exe` — 免安装，可离线使用
 
             ### 修复
-            - 修复打开文件树笔记时主界面白屏的问题
+            - 修复编辑视图 React #185 无限更新崩溃
+            - 修复语法视图右侧空白、文本仅显示在左侧的问题
 
             安装说明见 `INSTALL.zh-CN.txt`。需要 Windows 10/11 64 位与 WebView2。
         env:

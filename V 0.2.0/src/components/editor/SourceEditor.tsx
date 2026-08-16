@@ -96,13 +96,13 @@ export function SourceEditor({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
       <div className="flex h-8 shrink-0 items-center border-b border-border px-4 text-xs text-muted-foreground">
         Markdown 源码 · 编写语法后可切换到阅读或编辑视图预览效果
       </div>
       <textarea
         ref={textareaRef}
-        className="source-editor flex-1"
+        className="source-editor min-h-0 w-full flex-1"
         value={text}
         spellCheck={false}
         aria-label="Markdown 源码"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FileText, PenLine } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,7 +66,7 @@ export function AppLayout() {
   const fileOpenError = useAppStore((s) => s.fileOpenError);
   const clearFileOpenError = useAppStore((s) => s.clearFileOpenError);
 
-  const noteNames = flattenNoteNames(fileTree);
+  const noteNames = useMemo(() => flattenNoteNames(fileTree), [fileTree]);
 
   const handleWikiLinkClick = async (target: string) => {
     if (!vaultPath) return;
@@ -147,7 +147,7 @@ export function AppLayout() {
                     }
                   />
                 )}
-                <div className="flex min-h-0 flex-1 overflow-hidden">
+                <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   {viewMode === "source" ? (
                     <SourceEditor
                       key={activeTab.path}
@@ -160,7 +160,7 @@ export function AppLayout() {
                     />
                   ) : (
                     <MarkdownEditor
-                      key={activeTab.path}
+                      key={`${activeTab.path}-${viewMode}`}
                       path={activeTab.path}
                       content={activeTab.content}
                       frontmatter={activeTab.frontmatter}

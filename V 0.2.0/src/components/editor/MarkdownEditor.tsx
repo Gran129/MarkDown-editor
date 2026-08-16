@@ -110,6 +110,7 @@ export function MarkdownEditor({
   frontmatterRef.current = frontmatter;
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
+  const editorRef = useRef<Editor | null>(null);
 
   const getMarkdownFromEditor = useCallback((ed: Editor) => {
     const storage = ed.storage as { markdown: { getMarkdown: () => string } };
@@ -325,26 +326,27 @@ export function MarkdownEditor({
     [extensions],
   );
 
+  editorRef.current = editor;
+
   useEffect(() => {
     setEditorScrollEl(editorContainerRef.current);
     return () => setEditorScrollEl(null);
-  }, [setEditorScrollEl]);
+  }, [setEditorScrollEl, editor]);
 
   useEffect(() => {
     setEditor(editor);
+    return () => setEditor(null);
+  }, [editor, setEditor]);
+
+  useEffect(() => {
     return () => {
-      if (editor) {
-        if (saveTimer.current) clearTimeout(saveTimer.current);
-        if (editableRef.current) {
-          const md = getMarkdownFromEditor(editor);
-          if (md !== content) {
-            updateTabContent(path, md, frontmatter);
-          }
-        }
-      }
-      setEditor(null);
+      const ed = editorRef.current;
+      if (!ed || ed.isDestroyed || !editableRef.current) return;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      const md = getMarkdownFromEditor(ed);
+      updateTabContent(pathRef.current, md, frontmatterRef.current);
     };
-  }, [editor, setEditor, getMarkdownFromEditor, updateTabContent, path, frontmatter, content]);
+  }, [getMarkdownFromEditor, updateTabContent]);
 
   useEffect(() => {
     if (!editor) return;
@@ -363,22 +365,9 @@ export function MarkdownEditor({
   useEffect(() => {
     if (!editor) return;
     void refreshSyncedBlockReferences(editor, path, (p) =>
-      tabs.find((t) => t.path === p)?.content,
+      tabsRef.current.find((t) => t.path === p)?.content,
     );
-  }, [editor, path, tabs]);
-
-  useEffect(() => {
-    if (!editor) return;
-    const current = getMarkdownFromEditor(editor);
-    if (current !== content) {
-      try {
-        editor.commands.setContent(preprocessMarkdown(content, noteNames));
-      } catch (error) {
-        console.error("Failed to set editor content:", error);
-        editor.commands.setContent(content);
-      }
-    }
-  }, [path, content, editor, noteNames, getMarkdownFromEditor]);
+  }, [editor, path]);
 
   useEffect(() => {
     if (!editor || !editorContainerRef.current) return;
