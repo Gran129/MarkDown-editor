@@ -7,6 +7,7 @@ import { useAppStore } from "@/stores/app-store";
 import { indexVault } from "@/lib/tauri-api";
 
 import { useEditorStore } from "@/stores/editor-store";
+import { isBinaryOpenable } from "@/lib/file-kinds";
 
 function useKeyboardShortcuts() {
   const setSearchOpen = useAppStore((s) => s.setSearchOpen);
@@ -17,6 +18,7 @@ function useKeyboardShortcuts() {
   const saveTab = useAppStore((s) => s.saveTab);
   const openExportDialog = useAppStore((s) => s.openExportDialog);
   const activeTabPath = useAppStore((s) => s.activeTabPath);
+  const tabs = useAppStore((s) => s.tabs);
   const viewMode = useAppStore((s) => s.viewMode);
   const setViewMode = useAppStore((s) => s.setViewMode);
   const cycleViewMode = useAppStore((s) => s.cycleViewMode);
@@ -24,9 +26,11 @@ function useKeyboardShortcuts() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
+      const active = tabs.find((t) => t.path === activeTabPath);
+      const binary = isBinaryOpenable(active?.kind);
       if (mod && e.altKey && e.code === "Digit1") {
         e.preventDefault();
-        setViewMode("source");
+        if (!binary) setViewMode("source");
         return;
       }
       if (mod && e.altKey && e.code === "Digit2") {
@@ -79,6 +83,7 @@ function useKeyboardShortcuts() {
     saveTab,
     openExportDialog,
     activeTabPath,
+    tabs,
     viewMode,
     setViewMode,
     cycleViewMode,

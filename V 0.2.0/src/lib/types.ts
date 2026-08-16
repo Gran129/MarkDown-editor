@@ -35,6 +35,8 @@ export interface AppSettings {
   font_size: number;
   line_height: number;
   default_vault: string | null;
+  code_inline_on_selection: boolean;
+  code_merge_paragraphs: boolean;
 }
 
 export interface TabState {
@@ -43,6 +45,7 @@ export interface TabState {
   isDirty: boolean;
   content: string;
   frontmatter: Record<string, unknown>;
+  kind?: "note" | "office" | "pdf" | "xmind";
 }
 
 export interface TagInfo {

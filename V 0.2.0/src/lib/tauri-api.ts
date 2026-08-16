@@ -159,6 +159,39 @@ export async function copyIntoNoteResources(
   return invoke<string>("copy_into_note_resources", { notePath, sourcePath });
 }
 
+export interface ResourceFile {
+  name: string;
+  path: string;
+  relative: string;
+}
+
+export async function listNoteResources(notePath: string): Promise<ResourceFile[]> {
+  return invoke<ResourceFile[]>("list_note_resources", { notePath });
+}
+
+export interface XmindTopic {
+  id: string;
+  title: string;
+  children: XmindTopic[];
+}
+
+export interface XmindDoc {
+  title: string;
+  root: XmindTopic;
+}
+
+export async function loadXmind(path: string): Promise<XmindDoc> {
+  return invoke<XmindDoc>("load_xmind", { path });
+}
+
+export async function saveXmind(path: string, doc: XmindDoc): Promise<void> {
+  return invoke("save_xmind", { path, doc });
+}
+
+export async function createXmind(path: string, title: string): Promise<string> {
+  return invoke<string>("create_xmind", { path, title });
+}
+
 export async function openPath(path: string): Promise<void> {
   return invoke("open_path", { path });
 }

@@ -544,6 +544,41 @@
   height: 26rem;
 }
 
+.embed-block-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+}
+.embed.is-embed-selected,
+.embed.ProseMirror-selectednode,
+.is-embed-located {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 25%, transparent);
+}
+.embed-media-node {
+  display: block;
+  margin: 0.6em 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--card);
+}
+
+.editor-drop-caret {
+  display: none;
+  position: absolute;
+  width: 2px;
+  background: var(--primary);
+  pointer-events: none;
+  z-index: 30;
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
 .mermaid-diagram {
   margin: 0.5em 0;
   padding: 0.5em;
@@ -552,6 +587,28 @@
   overflow-x: auto;
 }
 .mermaid-diagram svg { max-width: 100%; height: auto; }
+
+/* Hide Mermaid 11 global parse-error banners (they steal layout/scroll). */
+body > svg[aria-roledescription="error"],
+body > [id^="dmermaid"],
+body > [id^="dmm"],
+body > .error-icon,
+.error-icon:not(.mermaid-diagram *),
+div[id^="d"][aria-roledescription="error"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ProseMirror-selectednode.embed,
+.embed.ProseMirror-selectednode,
+.embed-office-node.ProseMirror-selectednode .embed-office {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 25%, transparent);
+}
 
 .tiptap.is-readonly {
   caret-color: transparent;

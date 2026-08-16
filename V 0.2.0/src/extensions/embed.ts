@@ -33,6 +33,7 @@ export const Embed = Node.create({
     return {
       target: { default: "" },
       size: { default: null },
+      collapsed: { default: false },
     };
   },
 

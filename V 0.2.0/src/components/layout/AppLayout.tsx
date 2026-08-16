@@ -30,6 +30,7 @@ import {
   stripNoteExtension,
 } from "@/lib/note-format";
 import { isOfficeFileName } from "@/lib/office";
+import { isBinaryOpenable, openableKindFromPath } from "@/lib/file-kinds";
 import type { VaultInfo } from "@/lib/types";
 
 function flattenNoteNames(nodes: import("@/lib/types").FileNode[]): string[] {
@@ -99,7 +100,7 @@ export function AppLayout() {
       await revealInExplorer(abs);
       return;
     }
-    if (isOfficeFileName(target)) {
+    if (isOfficeFileName(target) || isBinaryOpenable(openableKindFromPath(target))) {
       return;
     }
     await handleWikiLinkClick(stripNoteExtension(target));

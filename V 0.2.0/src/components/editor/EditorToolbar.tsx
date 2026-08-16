@@ -57,7 +57,9 @@ import { useEditorStore } from "@/stores/editor-store";
 import { MarkColorMenu } from "@/components/editor/MarkColorMenu";
 import { CodeBlockColorMenu, pickLocalImagePath } from "@/components/editor/CodeBlockColorMenu";
 import { copyIntoNoteResources } from "@/lib/tauri-api";
-import { pickLocalOfficePath } from "@/lib/office";
+import { applyToolbarCodeBlock } from "@/lib/code-block-command";
+import { MEDIA_DIALOG_EXTENSIONS } from "@/lib/file-kinds";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,6 +83,17 @@ const CALLOUT_TYPES = [
   { type: "question", label: "问题" },
   { type: "quote", label: "引用" },
 ];
+
+async function pickLocalMediaPath(): Promise<string | null> {
+  const selected = await open({
+    multiple: false,
+    filters: [
+      { name: "Office / PDF / XMind", extensions: MEDIA_DIALOG_EXTENSIONS },
+    ],
+  });
+  if (!selected || Array.isArray(selected)) return null;
+  return selected;
+}
 
 const HEADING_TITLES: Record<number, string> = {
   1: "一级标题（#）",
@@ -118,6 +131,7 @@ function ToolbarButton({
 }
 
 export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolbarProps) {
+  const settings = useAppStore((s) => s.settings);
   const saveTab = useAppStore((s) => s.saveTab);
   const setFindReplaceOpen = useEditorStore((s) => s.setFindReplaceOpen);
   const isDirty = useAppStore((s) =>
@@ -156,18 +170,33 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
     setEmbedTarget("");
   };
 
-  const insertOfficeFile = async () => {
+  const insertMediaFile = async () => {
     if (!filePath) {
-      window.alert("请先保存笔记，再插入 Word / Excel / PowerPoint 文件。");
+      window.alert("请先保存笔记，再插入 Office / PDF / XMind 文件。");
       return;
     }
-    const picked = await pickLocalOfficePath();
+    if (editor.isActive("embed")) {
+      const replace = window.confirm(
+        "当前已选中一个文件预览。继续插入会放在它后面；若直接替换选区内容可能丢失原预览。是否继续？",
+      );
+      if (!replace) return;
+    }
+    const picked = await pickLocalMediaPath();
     if (!picked) return;
     try {
       const relative = await copyIntoNoteResources(filePath, picked);
-      editor.chain().focus().setEmbed({ target: relative }).run();
+      if (editor.isActive("embed")) {
+        const { to } = editor.state.selection;
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(to, { type: "embed", attrs: { target: relative } })
+          .run();
+      } else {
+        editor.chain().focus().setEmbed({ target: relative }).run();
+      }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "插入 Office 文件失败");
+      window.alert(error instanceof Error ? error.message : "插入文件失败");
     }
   };
 
@@ -486,13 +515,12 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         </ToolbarButton>
         <ToolbarButton
           onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .toggleCodeBlock({ language: "plaintext" })
-              .run()
+            applyToolbarCodeBlock(editor, {
+              inlineOnSelection: settings.code_inline_on_selection,
+              mergeParagraphs: settings.code_merge_paragraphs,
+            })
           }
-          active={editor.isActive("codeBlock")}
+          active={editor.isActive("codeBlock") || editor.isActive("code")}
           title="代码块"
         >
           <Code className="h-4 w-4" />
@@ -542,8 +570,8 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           <Paperclip className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => void insertOfficeFile()}
-          title="插入 Word / Excel / PowerPoint（笔记内预览，原文件可编辑）"
+          onClick={() => void insertMediaFile()}
+          title="插入 Office / PDF / XMind（笔记内预览，可在编辑视图中打开编辑）"
         >
           <FileSpreadsheet className="h-4 w-4" />
         </ToolbarButton>

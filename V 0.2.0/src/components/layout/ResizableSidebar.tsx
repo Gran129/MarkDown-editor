@@ -36,12 +36,24 @@ export function ResizableSidebar({
   const startRef = useRef({ x: 0, width: 0 });
   const [displayWidth, setDisplayWidth] = useState(width);
   const draggingRef = useRef(false);
+  const handleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!draggingRef.current) {
       setDisplayWidth(width);
     }
   }, [width]);
+
+  useEffect(() => {
+    const el = handleRef.current;
+    if (!el) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent) => {
@@ -79,6 +91,7 @@ export function ResizableSidebar({
 
   const handle = (
     <div
+      ref={handleRef}
       role="separator"
       aria-orientation="vertical"
       aria-valuemin={minWidth}
@@ -86,8 +99,12 @@ export function ResizableSidebar({
       aria-valuenow={displayWidth}
       aria-label={side === "left" ? "调整左侧栏宽度" : "调整右侧栏宽度"}
       onMouseDown={handleMouseDown}
+      onWheel={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
       className={cn(
-        "group relative z-20 flex w-1 shrink-0 touch-none select-none",
+        "group relative z-20 flex w-1 shrink-0 touch-none select-none overscroll-none",
         side === "left" ? "order-2" : "order-1",
       )}
     >

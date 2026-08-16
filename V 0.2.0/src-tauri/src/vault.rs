@@ -63,7 +63,7 @@ fn scan_dir(dir: &Path) -> Vec<FileNode> {
                 is_dir: true,
                 children: Some(children),
             });
-        } else if crate::mde::is_note_file(&path) {
+        } else if crate::mde::is_openable_file(&path) {
             nodes.push(FileNode {
                 name,
                 path: path.to_string_lossy().to_string(),

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppStore } from "@/stores/app-store";
 import { getAppEditionInfo } from "@/lib/tauri-api";
 import type { AppEditionInfo } from "@/lib/types";
@@ -47,6 +48,7 @@ export function SettingsDialog() {
   const vaultPath = useAppStore((s) => s.vaultPath);
   const sourceVaultPath = useAppStore((s) => s.sourceVaultPath);
   const [editionInfo, setEditionInfo] = useState<AppEditionInfo | null>(null);
+  const [tab, setTab] = useState("general");
   const lineHeight = settings.line_height ?? 1.75;
 
   useEffect(() => {
@@ -56,11 +58,16 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setSettingsOpen}>
-      <DialogContent className="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>设置</DialogTitle>
         </DialogHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
+          <TabsList className="mx-6 mt-3 grid w-auto grid-cols-2">
+            <TabsTrigger value="general">常规</TabsTrigger>
+            <TabsTrigger value="editor">编辑</TabsTrigger>
+          </TabsList>
+          <TabsContent value="general" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           <EditionBadge info={editionInfo} />
           <div>
             <label className="text-sm font-medium">主题</label>
@@ -197,7 +204,45 @@ export function SettingsDialog() {
               )}
             </span>
           </label>
-        </div>
+          </TabsContent>
+          <TabsContent value="editor" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">代码块</p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.code_inline_on_selection}
+                  onChange={(e) =>
+                    void updateSettings({ code_inline_on_selection: e.target.checked })
+                  }
+                />
+                <span>
+                  段落中代码块
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    打开后，选中段落里的部分文字再点代码块，只把选中文字标成行内代码，而不是整段变成代码块。
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.code_merge_paragraphs}
+                  onChange={(e) =>
+                    void updateSettings({ code_merge_paragraphs: e.target.checked })
+                  }
+                />
+                <span>
+                  多段落合并为一个代码块
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    打开后，选中多个段落再启用代码块，会合并成一个代码块并保留原来的换行，语法高亮仍然可用。
+                  </span>
+                </span>
+              </label>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
