@@ -1,7 +1,7 @@
 {
   "name": "markdown-editor",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "build:win": "npm run tauri build -- --target x86_64-pc-windows-msvc"
+    "build:win": "npm run tauri build -- --target x86_64-pc-windows-msvc",
+    "release:win": "npm run build:win && powershell -File scripts/collect-windows-release.ps1"
   },
   "dependencies": {
     "@radix-ui/react-context-menu": "^2.2.6",
