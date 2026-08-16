@@ -1,6 +1,6 @@
 [package]
 name = "markdown-editor"
-version = "0.2.1"
+version = "0.2.2"
 description = "MarkDown Editor - WYSIWYG markdown editor with Obsidian-style vault"
 authors = ["you"]
 edition = "2021"

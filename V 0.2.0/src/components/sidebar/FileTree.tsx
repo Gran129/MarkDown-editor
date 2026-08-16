@@ -192,6 +192,7 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             )}
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
             onClick={handleClick}
+            onDoubleClick={(e) => e.preventDefault()}
           >
             {isDir ? (
               expanded ? (

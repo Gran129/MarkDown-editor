@@ -43,6 +43,7 @@ interface AppStore {
   tagFilter: string | null;
   vaultTags: TagInfo[];
   viewMode: EditorViewMode;
+  fileOpenError: string | null;
 
   init: () => Promise<void>;
   openVault: (path?: string) => Promise<void>;
@@ -70,6 +71,7 @@ interface AppStore {
   refreshVaultTags: () => Promise<void>;
   setViewMode: (mode: EditorViewMode) => void;
   cycleViewMode: () => void;
+  clearFileOpenError: () => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -151,6 +153,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   tagFilter: null,
   vaultTags: [],
   viewMode: loadViewMode(),
+  fileOpenError: null,
 
   init: async () => {
     const loaded = await loadSettings();
@@ -194,28 +197,38 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const { tabs } = get();
     const existing = tabs.find((t) => t.path === path);
     if (existing) {
-      set({ activeTabPath: path });
+      set({ activeTabPath: path, fileOpenError: null });
       return;
     }
 
-    let raw = await readFile(path);
-    const draft = await loadDraft(path);
-    if (draft) raw = draft;
+    try {
+      let raw = await readFile(path);
+      const draft = await loadDraft(path);
+      if (draft) raw = draft;
 
-    const { frontmatter, body } = parseFrontmatter(raw);
-    const title = getNoteTitle(path, frontmatter);
-    const tab: TabState = {
-      path,
-      title,
-      isDirty: !!draft,
-      content: body,
-      frontmatter,
-    };
-    set({
-      tabs: [...tabs, tab],
-      activeTabPath: path,
-    });
+      const { frontmatter, body } = parseFrontmatter(raw);
+      const title = getNoteTitle(path, frontmatter);
+      const tab: TabState = {
+        path,
+        title,
+        isDirty: !!draft,
+        content: body,
+        frontmatter,
+      };
+      set({
+        tabs: [...tabs, tab],
+        activeTabPath: path,
+        fileOpenError: null,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "无法读取该笔记，请检查文件是否存在或是否已损坏。";
+      console.error("openFile failed:", path, error);
+      set({ fileOpenError: message });
+    }
   },
+
+  clearFileOpenError: () => set({ fileOpenError: null }),
 
   closeTab: (path: string) => {
     const { tabs, activeTabPath } = get();

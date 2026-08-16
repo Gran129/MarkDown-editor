@@ -18,6 +18,7 @@ import { FrontmatterEditor } from "@/components/editor/FrontmatterEditor";
 import { OutlinePanel } from "@/components/editor/OutlinePanel";
 import { BlockRefPanel } from "@/components/editor/BlockRefPanel";
 import { FindReplaceDialog } from "@/components/editor/FindReplaceDialog";
+import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary";
 import { SearchDialog, QuickSwitcherDialog } from "@/components/search/SearchDialog";
 import { SettingsDialog, HelpDialog } from "@/components/settings/SettingsDialog";
 import { ExportDialog } from "@/components/settings/ExportDialog";
@@ -62,6 +63,8 @@ export function AppLayout() {
   const setTagFilter = useAppStore((s) => s.setTagFilter);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const viewMode = useAppStore((s) => s.viewMode);
+  const fileOpenError = useAppStore((s) => s.fileOpenError);
+  const clearFileOpenError = useAppStore((s) => s.clearFileOpenError);
 
   const noteNames = flattenNoteNames(fileTree);
 
@@ -120,47 +123,61 @@ export function AppLayout() {
 
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <TabBar />
+          {fileOpenError && (
+            <div className="flex items-center justify-between gap-3 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+              <span>{fileOpenError}</span>
+              <button
+                type="button"
+                className="shrink-0 rounded px-2 py-0.5 text-xs hover:bg-destructive/10"
+                onClick={() => clearFileOpenError()}
+              >
+                关闭
+              </button>
+            </div>
+          )}
           {activeTab ? (
-            <>
-              {viewMode !== "source" && (
-                <FrontmatterEditor
-                  frontmatter={activeTab.frontmatter}
-                  readOnly={viewMode === "reading"}
-                  onChange={(fm) =>
-                    updateTabContent(activeTab.path, activeTab.content, fm)
-                  }
-                />
-              )}
-              <div className="flex-1 overflow-hidden">
-                {viewMode === "source" ? (
-                  <SourceEditor
-                    key={activeTab.path}
-                    path={activeTab.path}
-                    content={activeTab.content}
+            <EditorErrorBoundary resetKey={activeTab.path}>
+              <>
+                {viewMode !== "source" && (
+                  <FrontmatterEditor
                     frontmatter={activeTab.frontmatter}
-                    fontSize={settings.font_size}
-                    lineHeight={settings.line_height}
-                    autoSaveMs={settings.auto_save_ms}
-                  />
-                ) : (
-                  <MarkdownEditor
-                    key={activeTab.path}
-                    path={activeTab.path}
-                    content={activeTab.content}
-                    frontmatter={activeTab.frontmatter}
-                    fontSize={settings.font_size}
-                    lineHeight={settings.line_height}
-                    autoSaveMs={settings.auto_save_ms}
-                    noteNames={noteNames}
-                    editable={viewMode === "editing"}
-                    showToolbar={viewMode === "editing"}
-                    onWikiLinkClick={(t) => void handleWikiLinkClick(t)}
-                    onEmbedClick={(t) => void handleEmbedClick(t)}
-                    onTagClick={(tag) => setTagFilter(tag)}
+                    readOnly={viewMode === "reading"}
+                    onChange={(fm) =>
+                      updateTabContent(activeTab.path, activeTab.content, fm)
+                    }
                   />
                 )}
-              </div>
-            </>
+                <div className="flex min-h-0 flex-1 overflow-hidden">
+                  {viewMode === "source" ? (
+                    <SourceEditor
+                      key={activeTab.path}
+                      path={activeTab.path}
+                      content={activeTab.content}
+                      frontmatter={activeTab.frontmatter}
+                      fontSize={settings.font_size}
+                      lineHeight={settings.line_height}
+                      autoSaveMs={settings.auto_save_ms}
+                    />
+                  ) : (
+                    <MarkdownEditor
+                      key={activeTab.path}
+                      path={activeTab.path}
+                      content={activeTab.content}
+                      frontmatter={activeTab.frontmatter}
+                      fontSize={settings.font_size}
+                      lineHeight={settings.line_height}
+                      autoSaveMs={settings.auto_save_ms}
+                      noteNames={noteNames}
+                      editable={viewMode === "editing"}
+                      showToolbar={viewMode === "editing"}
+                      onWikiLinkClick={(t) => void handleWikiLinkClick(t)}
+                      onEmbedClick={(t) => void handleEmbedClick(t)}
+                      onTagClick={(tag) => setTagFilter(tag)}
+                    />
+                  )}
+                </div>
+              </>
+            </EditorErrorBoundary>
           ) : (
             <WelcomeScreen />
           )}

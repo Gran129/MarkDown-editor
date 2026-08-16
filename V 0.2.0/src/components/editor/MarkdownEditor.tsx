@@ -13,7 +13,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import { common, createLowlight } from "lowlight";
 import { Markdown } from "tiptap-markdown";
 import mermaid from "mermaid";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   MarkdownBold,
@@ -99,6 +99,18 @@ export function MarkdownEditor({
   const pathRef = useRef(path);
   pathRef.current = path;
 
+  const onWikiLinkClickRef = useRef(onWikiLinkClick);
+  onWikiLinkClickRef.current = onWikiLinkClick;
+  const onEmbedClickRef = useRef(onEmbedClick);
+  onEmbedClickRef.current = onEmbedClick;
+  const onTagClickRef = useRef(onTagClick);
+  onTagClickRef.current = onTagClick;
+
+  const frontmatterRef = useRef(frontmatter);
+  frontmatterRef.current = frontmatter;
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+
   const getMarkdownFromEditor = useCallback((ed: Editor) => {
     const storage = ed.storage as { markdown: { getMarkdown: () => string } };
     const raw = storage.markdown.getMarkdown();
@@ -109,8 +121,17 @@ export function MarkdownEditor({
     return sanitizeBrokenWikiLinksInMarkdown(body);
   }, []);
 
-  const editor = useEditor({
-    extensions: [
+  const initialContent = useMemo(() => {
+    try {
+      return preprocessMarkdown(content, noteNames);
+    } catch (error) {
+      console.error("Failed to preprocess markdown:", error);
+      return content;
+    }
+  }, [content, noteNames]);
+
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         codeBlock: false,
         bold: false,
@@ -191,14 +212,16 @@ export function MarkdownEditor({
       MathBlock,
       MathInline,
     ],
-    content: preprocessMarkdown(content, noteNames),
-    editable,
-    editorProps: {
+    [noteNames],
+  );
+
+  const editorProps = useMemo(
+    () => ({
       attributes: {
         class: `tiptap prose prose-sm max-w-none focus:outline-none${editable ? "" : " is-readonly"}`,
         style: `font-size: ${fontSize}px; --editor-line-height: ${lineHeight}`,
       },
-      handleClick: (view, _pos, event) => {
+      handleClick: (view: import("@tiptap/pm/view").EditorView, _pos: number, event: MouseEvent) => {
         const target = event.target as HTMLElement;
         const wikiEl = target.closest("[data-wiki-link]");
         if (wikiEl) {
@@ -206,7 +229,7 @@ export function MarkdownEditor({
             wikiEl.getAttribute("data-target"),
             wikiEl.getAttribute("data-label") ?? wikiEl.textContent,
           );
-          if (noteTarget) onWikiLinkClick(noteTarget);
+          if (noteTarget) onWikiLinkClickRef.current(noteTarget);
           return true;
         }
         const embedEl = target.closest("[data-embed]");
@@ -217,14 +240,14 @@ export function MarkdownEditor({
           );
           if (embedTarget) {
             if (isOfficeFileName(embedTarget)) return true;
-            onEmbedClick(embedTarget);
+            onEmbedClickRef.current(embedTarget);
           }
           return true;
         }
         const tagEl = target.closest("[data-tag]");
         if (tagEl) {
           const tag = tagEl.getAttribute("data-tag-name");
-          if (tag) onTagClick(tag);
+          if (tag) onTagClickRef.current(tag);
           return true;
         }
         const blockRefEl = target.closest("[data-block-ref]");
@@ -257,35 +280,50 @@ export function MarkdownEditor({
         }
         return false;
       },
-    },
-    onUpdate: ({ editor: ed }) => {
-      if (!editableRef.current) return;
-      const md = getMarkdownFromEditor(ed);
-      updateTabContent(path, md, frontmatter);
+    }),
+    [editable, fontSize, lineHeight, setSelectedBlockRef],
+  );
 
-      if (blockSyncTimer.current) clearTimeout(blockSyncTimer.current);
-      blockSyncTimer.current = setTimeout(() => {
-        const $from = ed.state.selection.$from;
-        if ($from.parent.type.name === "paragraph" && $from.parent.attrs.blockId) {
-          refreshSameFileBlockReferences(
-            ed,
-            $from.parent.attrs.blockId as string,
-            $from.parent.textContent,
+  const editor = useEditor(
+    {
+      extensions,
+      content: initialContent,
+      editable,
+      editorProps,
+      shouldRerenderOnTransaction: false,
+      onContentError: ({ error }) => {
+        console.error("TipTap content error:", error);
+      },
+      onUpdate: ({ editor: ed }) => {
+        if (!editableRef.current) return;
+        const md = getMarkdownFromEditor(ed);
+        updateTabContent(pathRef.current, md, frontmatterRef.current);
+
+        if (blockSyncTimer.current) clearTimeout(blockSyncTimer.current);
+        blockSyncTimer.current = setTimeout(() => {
+          const $from = ed.state.selection.$from;
+          if ($from.parent.type.name === "paragraph" && $from.parent.attrs.blockId) {
+            refreshSameFileBlockReferences(
+              ed,
+              $from.parent.attrs.blockId as string,
+              $from.parent.textContent,
+            );
+          }
+          void refreshSyncedBlockReferences(ed, pathRef.current, (p) =>
+            tabsRef.current.find((t) => t.path === p)?.content,
           );
-        }
-        void refreshSyncedBlockReferences(ed, path, (p) =>
-          tabs.find((t) => t.path === p)?.content,
-        );
-      }, 400);
+        }, 400);
 
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        const full = serializeWithFrontmatter(frontmatter, md);
-        await saveDraft(path, full);
-        await saveTab(path);
-      }, autoSaveMs);
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(async () => {
+          const full = serializeWithFrontmatter(frontmatterRef.current, md);
+          await saveDraft(pathRef.current, full);
+          await saveTab(pathRef.current);
+        }, autoSaveMs);
+      },
     },
-  });
+    [extensions],
+  );
 
   useEffect(() => {
     setEditorScrollEl(editorContainerRef.current);
@@ -333,7 +371,12 @@ export function MarkdownEditor({
     if (!editor) return;
     const current = getMarkdownFromEditor(editor);
     if (current !== content) {
-      editor.commands.setContent(preprocessMarkdown(content, noteNames));
+      try {
+        editor.commands.setContent(preprocessMarkdown(content, noteNames));
+      } catch (error) {
+        console.error("Failed to set editor content:", error);
+        editor.commands.setContent(content);
+      }
     }
   }, [path, content, editor, noteNames, getMarkdownFromEditor]);
 
@@ -372,13 +415,19 @@ export function MarkdownEditor({
   }, [editor]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {showToolbar && (
         <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
       )}
       {showToolbar && <TableMenu editor={editor} />}
-      <div ref={editorContainerRef} className="relative flex-1 overflow-auto">
-        <EditorContent editor={editor} className="h-full" />
+      <div ref={editorContainerRef} className="relative min-h-0 flex-1 overflow-auto">
+        {editor ? (
+          <EditorContent editor={editor} className="min-h-full" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            正在加载编辑器…
+          </div>
+        )}
         <LinkPreview
           editor={editor}
           containerRef={editorContainerRef}
