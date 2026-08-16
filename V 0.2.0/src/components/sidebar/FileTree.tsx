@@ -13,6 +13,10 @@ import {
   Trash2,
   ExternalLink,
   Download,
+  GitBranch,
+  FileSpreadsheet,
+  Presentation,
+  File,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +42,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   createFile,
   createFolder,
+  createXmind,
   deletePath,
   importIntoVault,
   movePath,
@@ -52,6 +57,8 @@ import {
   nativeNoteFileName,
   stripNoteExtension,
 } from "@/lib/note-format";
+import { isOpenableFileName, openableKindFromPath } from "@/lib/file-kinds";
+import { ResourcesPanel } from "@/components/sidebar/ResourcesPanel";
 
 interface FileTreeProps {
   nodes: FileNode[];
@@ -59,11 +66,24 @@ interface FileTreeProps {
   depth?: number;
 }
 
-type PromptKind = "new-note" | "new-folder" | "rename";
+type PromptKind = "new-note" | "new-folder" | "new-xmind" | "rename";
 
 interface PromptState {
   kind: PromptKind;
   defaultValue?: string;
+}
+
+function fileIcon(name: string) {
+  const kind = openableKindFromPath(name);
+  if (kind === "pdf") return File;
+  if (kind === "xmind") return GitBranch;
+  if (kind === "office") {
+    const ext = extensionOf(name);
+    if (ext === "xlsx" || ext === "xls") return FileSpreadsheet;
+    if (ext === "pptx" || ext === "ppt") return Presentation;
+    return FileText;
+  }
+  return FileText;
 }
 
 function getParentPath(node: FileNode): string {
@@ -141,6 +161,12 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
         await createFile(`${base}/${nativeNoteFileName(value)}`, `# ${value}\n`);
         break;
       }
+      case "new-xmind": {
+        const base = getParentPath(node);
+        const dest = `${base}/${value.replace(/\.xmind$/i, "")}.xmind`;
+        await createXmind(dest, value.replace(/\.xmind$/i, "") || "思维导图");
+        break;
+      }
       case "new-folder": {
         const base = getParentPath(node);
         await createFolder(`${base}/${value}`);
@@ -193,14 +219,18 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
       ? "新建笔记"
       : prompt?.kind === "new-folder"
         ? "新建文件夹"
-        : "重命名";
+        : prompt?.kind === "new-xmind"
+          ? "新建思维导图"
+          : "重命名";
 
   const promptPlaceholder =
     prompt?.kind === "new-note"
       ? "笔记名称（不含后缀）"
       : prompt?.kind === "new-folder"
         ? "文件夹名称"
-        : "新名称";
+        : prompt?.kind === "new-xmind"
+          ? "思维导图名称（不含后缀）"
+          : "新名称";
 
   return (
     <>
@@ -236,7 +266,10 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
                 <Folder className="h-4 w-4 shrink-0 text-primary" />
               )
             ) : (
-              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+              (() => {
+                const Icon = fileIcon(node.name);
+                return <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />;
+              })()
             )}
             <span className="min-w-0 flex-1 break-words leading-snug [overflow-wrap:anywhere]">
               {node.name}
@@ -248,6 +281,10 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             <FileText className="mr-2 h-4 w-4" />
             新建笔记
           </ContextMenuItem>
+          <ContextMenuItem onSelect={() => openPrompt("new-xmind")}>
+            <GitBranch className="mr-2 h-4 w-4" />
+            新建思维导图
+          </ContextMenuItem>
           <ContextMenuItem onSelect={() => openPrompt("new-folder")}>
             <FolderPlus className="mr-2 h-4 w-4" />
             新建文件夹
@@ -256,8 +293,9 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             onSelect={() => {
               void (async () => {
                 try {
-                  await pickAndImport(vaultPath, getParentPath(node), false);
+                  const imported = await pickAndImport(vaultPath, getParentPath(node), false);
                   await refreshFileTree();
+                  if (imported && isOpenableFileName(imported)) await openFile(imported);
                 } catch (error) {
                   window.alert(error instanceof Error ? error.message : "导入失败");
                 }
@@ -416,8 +454,11 @@ export function FileTreeSidebar() {
   const [newNoteName, setNewNoteName] = useState("");
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [newXmindOpen, setNewXmindOpen] = useState(false);
+  const [newXmindName, setNewXmindName] = useState("");
   const newNoteInputRef = useRef<HTMLInputElement>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
+  const newXmindInputRef = useRef<HTMLInputElement>(null);
   const openFile = useAppStore((s) => s.openFile);
 
   useEffect(() => {
@@ -431,6 +472,12 @@ export function FileTreeSidebar() {
       newFolderInputRef.current.focus();
     }
   }, [newFolderOpen]);
+
+  useEffect(() => {
+    if (newXmindOpen && newXmindInputRef.current) {
+      newXmindInputRef.current.focus();
+    }
+  }, [newXmindOpen]);
 
   const handleNewNote = async () => {
     if (!vaultPath) return;
@@ -452,12 +499,23 @@ export function FileTreeSidebar() {
     await refreshFileTree();
   };
 
+  const handleNewXmind = async () => {
+    if (!vaultPath) return;
+    const name = newXmindName.trim().replace(/\.xmind$/i, "");
+    if (!name) return;
+    const created = await createXmind(`${vaultPath}/${name}.xmind`, name);
+    setNewXmindOpen(false);
+    setNewXmindName("");
+    await refreshFileTree();
+    await openFile(created);
+  };
+
   const handleImport = async (directory: boolean, encryptedOnly = false) => {
     if (!vaultPath) return;
     try {
       const imported = await pickAndImport(vaultPath, vaultPath, directory, encryptedOnly);
       await refreshFileTree();
-      if (imported && !directory && isNoteFileName(imported)) {
+      if (imported && !directory && isOpenableFileName(imported)) {
         await openFile(imported);
       }
     } catch (error) {
@@ -514,6 +572,19 @@ export function FileTreeSidebar() {
             aria-label="新建文件夹"
           >
             <FolderPlus className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              setNewXmindName("");
+              setNewXmindOpen(true);
+            }}
+            title="新建思维导图"
+            aria-label="新建思维导图"
+          >
+            <GitBranch className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
@@ -583,6 +654,8 @@ export function FileTreeSidebar() {
         )}
       </div>
 
+      <ResourcesPanel />
+
       <Dialog open={newNoteOpen} onOpenChange={setNewNoteOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -625,6 +698,29 @@ export function FileTreeSidebar() {
               取消
             </Button>
             <Button onClick={() => void handleNewFolder()}>确定</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={newXmindOpen} onOpenChange={setNewXmindOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>新建思维导图</DialogTitle>
+          </DialogHeader>
+          <Input
+            ref={newXmindInputRef}
+            value={newXmindName}
+            placeholder="思维导图名称（不含后缀）"
+            onChange={(e) => setNewXmindName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleNewXmind();
+            }}
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setNewXmindOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={() => void handleNewXmind()}>确定</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

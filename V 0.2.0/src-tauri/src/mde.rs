@@ -604,6 +604,17 @@ pub fn is_note_file(path: &Path) -> bool {
     matches!(ext_lower(path).as_str(), "mdte" | "mde" | "md")
 }
 
+pub fn is_office_file(path: &Path) -> bool {
+    matches!(
+        ext_lower(path).as_str(),
+        "docx" | "xlsx" | "pptx" | "doc" | "xls" | "ppt"
+    )
+}
+
+pub fn is_openable_file(path: &Path) -> bool {
+    is_note_file(path) || is_office_file(path) || matches!(ext_lower(path).as_str(), "pdf" | "xmind")
+}
+
 pub fn note_rank(path: &Path) -> u8 {
     match ext_lower(path).as_str() {
         "mdte" => 0,
@@ -651,8 +662,38 @@ pub fn work_dir(note_path: &Path) -> PathBuf {
         .join(format!(".{stem}"))
 }
 
-fn resources_dir(note_path: &Path) -> PathBuf {
+pub fn resources_dir(note_path: &Path) -> PathBuf {
     work_dir(note_path).join(".resources")
+}
+
+#[derive(Debug, Clone)]
+pub struct ResourceFile {
+    pub name: String,
+    pub path: String,
+    pub relative: String,
+}
+
+pub fn list_note_resources(note_path: &Path) -> Result<Vec<ResourceFile>, String> {
+    let dir = resources_dir(note_path);
+    if !dir.is_dir() {
+        return Ok(vec![]);
+    }
+    let mut files = Vec::new();
+    let mut entries: Vec<_> = fs::read_dir(&dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+        .collect();
+    entries.sort_by_key(|e| e.file_name().to_string_lossy().to_lowercase());
+    for entry in entries {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        files.push(ResourceFile {
+            name: name.clone(),
+            path: entry.path().to_string_lossy().into_owned(),
+            relative: format!(".resources/{name}"),
+        });
+    }
+    Ok(files)
 }
 
 /// Copy a local Office (or other) file into the note's `.resources` folder.
@@ -816,6 +857,10 @@ mod tests {
         assert!(is_note_file(Path::new("a.mdte")));
         assert!(is_encrypted_note(Path::new("a.mde")));
         assert!(!is_encrypted_note(Path::new("a.md")));
+        assert!(is_openable_file(Path::new("slides.pptx")));
+        assert!(is_openable_file(Path::new("map.xmind")));
+        assert!(is_openable_file(Path::new("paper.pdf")));
+        assert!(!is_openable_file(Path::new("secret.bin")));
     }
 
     #[test]
@@ -851,6 +896,9 @@ mod tests {
 
         let rel2 = copy_into_note_resources(&note, &src).expect("copy duplicate");
         assert_eq!(rel2, ".resources/slides-2.pptx");
+
+        let listed = list_note_resources(&note).expect("list");
+        assert_eq!(listed.len(), 2);
 
         let _ = fs::remove_dir_all(&dir);
     }

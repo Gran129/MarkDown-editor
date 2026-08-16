@@ -26,6 +26,10 @@ fn default_auto_save_ms() -> u64 {
     60_000
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     pub theme: String,
@@ -41,6 +45,10 @@ pub struct AppSettings {
     #[serde(default = "default_line_height")]
     pub line_height: f64,
     pub default_vault: Option<String>,
+    #[serde(default = "default_true")]
+    pub code_inline_on_selection: bool,
+    #[serde(default = "default_true")]
+    pub code_merge_paragraphs: bool,
 }
 
 impl Default for AppSettings {
@@ -55,6 +63,8 @@ impl Default for AppSettings {
             font_size: 16,
             line_height: default_line_height(),
             default_vault: None,
+            code_inline_on_selection: true,
+            code_merge_paragraphs: true,
         }
     }
 }
@@ -431,6 +441,44 @@ pub fn copy_file(source: String, destination: String) -> Result<(), String> {
 #[tauri::command]
 pub fn copy_into_note_resources(note_path: String, source_path: String) -> Result<String, String> {
     crate::mde::copy_into_note_resources(Path::new(&note_path), Path::new(&source_path))
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ResourceFileDto {
+    pub name: String,
+    pub path: String,
+    pub relative: String,
+}
+
+#[tauri::command]
+pub fn list_note_resources(note_path: String) -> Result<Vec<ResourceFileDto>, String> {
+    crate::mde::list_note_resources(Path::new(&note_path))
+        .map(|files| {
+            files
+                .into_iter()
+                .map(|file| ResourceFileDto {
+                    name: file.name,
+                    path: file.path,
+                    relative: file.relative,
+                })
+                .collect()
+        })
+}
+
+#[tauri::command]
+pub fn load_xmind(path: String) -> Result<crate::xmind::XmindDoc, String> {
+    crate::xmind::load_xmind(Path::new(&path))
+}
+
+#[tauri::command]
+pub fn save_xmind(path: String, doc: crate::xmind::XmindDoc) -> Result<(), String> {
+    crate::xmind::save_xmind(Path::new(&path), &doc)
+}
+
+#[tauri::command]
+pub fn create_xmind(path: String, title: String) -> Result<String, String> {
+    let dest = crate::xmind::create_xmind(Path::new(&path), &title)?;
+    Ok(dest.to_string_lossy().into_owned())
 }
 
 #[tauri::command]

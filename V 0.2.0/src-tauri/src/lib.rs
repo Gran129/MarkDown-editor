@@ -5,6 +5,7 @@ mod search;
 mod updater;
 mod vault;
 mod watcher;
+mod xmind;
 
 use std::sync::Mutex;
 
@@ -59,6 +60,10 @@ pub fn run() {
             commands::read_binary_file,
             commands::copy_file,
             commands::copy_into_note_resources,
+            commands::list_note_resources,
+            commands::load_xmind,
+            commands::save_xmind,
+            commands::create_xmind,
             commands::open_path,
             commands::export_note,
             commands::import_into_vault,

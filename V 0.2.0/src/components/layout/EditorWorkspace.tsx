@@ -3,7 +3,12 @@ import { memo } from "react";
 import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
 import { SourceEditor } from "@/components/editor/SourceEditor";
 import { FrontmatterEditor } from "@/components/editor/FrontmatterEditor";
+import { PdfPreview } from "@/components/editor/PdfPreview";
+import { XmindEditor } from "@/components/editor/XmindEditor";
+import { OfficePreview } from "@/components/editor/OfficePreview";
 import { cn } from "@/lib/utils";
+import { isBinaryOpenable } from "@/lib/file-kinds";
+import { officeKindFromPath, officePreviewKind } from "@/lib/office";
 import type { AppSettings, EditorViewMode, TabState } from "@/lib/types";
 
 interface EditorWorkspaceProps {
@@ -27,8 +32,34 @@ export const EditorWorkspace = memo(function EditorWorkspace({
   onTagClick,
   onFrontmatterChange,
 }: EditorWorkspaceProps) {
-  const isSource = viewMode === "source";
+  const kind = activeTab.kind ?? "note";
+  const binary = isBinaryOpenable(kind);
+  const isSource = !binary && viewMode === "source";
   const isRich = !isSource;
+  const officeKind = kind === "office" ? officeKindFromPath(activeTab.path) : null;
+
+  if (binary) {
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4">
+        {kind === "pdf" && (
+          <PdfPreview path={activeTab.path} editable={viewMode === "editing"} />
+        )}
+        {kind === "xmind" && (
+          <XmindEditor path={activeTab.path} readOnly={viewMode !== "editing"} />
+        )}
+        {kind === "office" && officeKind && (
+          <div className="min-h-0 flex-1 overflow-auto">
+            <OfficePreview
+              target={activeTab.path}
+              kind={officeKind}
+              previewKind={officePreviewKind(activeTab.path)}
+              candidates={[activeTab.path]}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

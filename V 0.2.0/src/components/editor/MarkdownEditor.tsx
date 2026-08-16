@@ -12,7 +12,6 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { common, createLowlight } from "lowlight";
 import { Markdown } from "tiptap-markdown";
-import mermaid from "mermaid";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
@@ -27,6 +26,7 @@ import {
 import { ParagraphBlock } from "@/extensions/paragraph-block";
 import { BlockReference } from "@/extensions/block-reference";
 import { ColoredCodeBlock } from "@/extensions/colored-code-block";
+import { OrderedListKeys } from "@/extensions/ordered-list-keys";
 import { WikiLink } from "@/extensions/wiki-link";
 import { TagMark } from "@/extensions/tag-mark";
 import { Callout } from "@/extensions/callout";
@@ -44,6 +44,7 @@ import { isOfficeFileName } from "@/lib/office";
 import { preprocessMarkdown } from "@/lib/markdown-transform";
 import { refreshSameFileBlockReferences, refreshSyncedBlockReferences } from "@/lib/block-sync";
 import { createWikiLinkSuggestionRenderer } from "@/lib/suggestion-renderer";
+import { insertEmbedAtPoint, isResourceDrag, resourcePathFromEvent } from "@/lib/insert-embed";
 import { cn } from "@/lib/utils";
 
 import { EditorToolbar } from "./EditorToolbar";
@@ -53,8 +54,6 @@ import { LinkPreview } from "./LinkPreview";
 import "katex/dist/katex.min.css";
 
 const lowlight = createLowlight(common);
-
-mermaid.initialize({ startOnLoad: false, theme: "neutral" });
 
 interface MarkdownEditorProps {
   path: string;
@@ -100,6 +99,7 @@ export function MarkdownEditor({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blockSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const dropCaretRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef(path);
   pathRef.current = path;
 
@@ -180,6 +180,7 @@ export function MarkdownEditor({
       ExtendedTableCell,
       ExtendedTableHeader,
       ColoredCodeBlock.configure({ lowlight }),
+      OrderedListKeys,
       TaskList,
       TaskItem.configure({ nested: true }),
       MarkdownHighlight.configure({ multicolor: true }),
@@ -282,6 +283,37 @@ export function MarkdownEditor({
           return true;
         }
         return false;
+      },
+      handleDragOver: (view: import("@tiptap/pm/view").EditorView, event: DragEvent) => {
+        if (!isResourceDrag(event)) return false;
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        const caret = dropCaretRef.current;
+        const container = editorContainerRef.current;
+        if (!caret || !container) return true;
+        const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
+        if (!coords) {
+          caret.style.display = "none";
+          return true;
+        }
+        try {
+          const at = view.coordsAtPos(coords.pos);
+          const rect = container.getBoundingClientRect();
+          caret.style.display = "block";
+          caret.style.top = `${at.top - rect.top + container.scrollTop}px`;
+          caret.style.left = `${at.left - rect.left + container.scrollLeft}px`;
+          caret.style.height = `${Math.max(16, at.bottom - at.top)}px`;
+        } catch {
+          caret.style.display = "none";
+        }
+        return true;
+      },
+      handleDrop: (view: import("@tiptap/pm/view").EditorView, event: DragEvent) => {
+        const resource = resourcePathFromEvent(event);
+        if (dropCaretRef.current) dropCaretRef.current.style.display = "none";
+        if (!resource) return false;
+        event.preventDefault();
+        return insertEmbedAtPoint(view, event.clientX, event.clientY, resource);
       },
     }),
     [editable, fontSize, lineHeight, setSelectedBlockRef],
@@ -398,59 +430,6 @@ export function MarkdownEditor({
     return () => window.clearTimeout(timer);
   }, [editor, path, active]);
 
-  useEffect(() => {
-    if (!editor || !active || !editorContainerRef.current) return;
-
-    let mermaidTimer: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-
-    const renderMermaid = async () => {
-      if (cancelled || !editorContainerRef.current) return;
-      const blocks = editorContainerRef.current.querySelectorAll("pre code.language-mermaid");
-      if (!blocks.length) return;
-
-      for (const code of blocks) {
-        if (cancelled) return;
-        const pre = code.parentElement;
-        if (!pre || pre.dataset.mermaidRendered === "true") continue;
-        const source = code.textContent?.trim();
-        if (!source) continue;
-
-        const container = document.createElement("div");
-        container.className = "mermaid-diagram";
-        pre.insertAdjacentElement("afterend", container);
-
-        try {
-          const { svg } = await mermaid.render(`mmd-${Math.random().toString(36).slice(2)}`, source);
-          if (cancelled) {
-            container.remove();
-            return;
-          }
-          container.innerHTML = svg;
-          pre.dataset.mermaidRendered = "true";
-        } catch {
-          container.remove();
-        }
-      }
-    };
-
-    const scheduleMermaid = () => {
-      if (cancelled) return;
-      if (mermaidTimer) clearTimeout(mermaidTimer);
-      mermaidTimer = setTimeout(() => {
-        void renderMermaid();
-      }, 120);
-    };
-
-    scheduleMermaid();
-    editor.on("update", scheduleMermaid);
-    return () => {
-      cancelled = true;
-      if (mermaidTimer) clearTimeout(mermaidTimer);
-      editor.off("update", scheduleMermaid);
-    };
-  }, [editor, active]);
-
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
       <div
@@ -468,7 +447,13 @@ export function MarkdownEditor({
       >
         <TableMenu editor={editor} />
       </div>
-      <div ref={editorContainerRef} className="relative min-h-0 flex-1 overflow-auto">
+      <div
+        ref={editorContainerRef}
+        className="relative min-h-0 flex-1 overflow-auto"
+        onDragLeave={() => {
+          if (dropCaretRef.current) dropCaretRef.current.style.display = "none";
+        }}
+      >
         {editor ? (
           <EditorContent editor={editor} className="min-h-full" />
         ) : (
@@ -476,6 +461,7 @@ export function MarkdownEditor({
             正在加载编辑器…
           </div>
         )}
+        <div ref={dropCaretRef} className="editor-drop-caret" aria-hidden />
         <LinkPreview
           editor={editor}
           containerRef={editorContainerRef}

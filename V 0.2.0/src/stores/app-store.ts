@@ -25,6 +25,8 @@ import {
 import type { AppSettings, EditorViewMode, FileNode, TabState, TagInfo } from "@/lib/types";
 import { loadSidebarWidths } from "@/components/layout/ResizableSidebar";
 import { useEditorStore } from "@/stores/editor-store";
+import { isBinaryOpenable, openableKindFromPath } from "@/lib/file-kinds";
+import { fileNameOf, stripNoteExtension } from "@/lib/note-format";
 
 interface AppStore {
   vaultPath: string | null;
@@ -90,6 +92,8 @@ const defaultSettings: AppSettings = {
   font_size: 16,
   line_height: 1.75,
   default_vault: null,
+  code_inline_on_selection: true,
+  code_merge_paragraphs: true,
 };
 
 function clampAutoSaveMinutes(value: number): number {
@@ -222,24 +226,63 @@ export const useAppStore = create<AppStore>((set, get) => ({
   openFile: async (path: string) => {
     const { tabs } = get();
     const existing = tabs.find((t) => t.path === path);
+    const kind = openableKindFromPath(path) ?? "note";
     if (existing) {
-      startTransition(() => set({ activeTabPath: path, fileOpenError: null }));
+      startTransition(() => {
+        const next: { activeTabPath: string; fileOpenError: null; viewMode?: EditorViewMode } = {
+          activeTabPath: path,
+          fileOpenError: null,
+        };
+        if (isBinaryOpenable(kind) && get().viewMode === "source") {
+          persistViewMode("editing");
+          next.viewMode = "editing";
+        }
+        set(next);
+      });
       return;
     }
 
     try {
+      if (isBinaryOpenable(kind)) {
+        const title = fileNameOf(path);
+        const tab: TabState = {
+          path,
+          title,
+          isDirty: false,
+          content: "",
+          frontmatter: { title: stripNoteExtension(title) },
+          kind,
+        };
+        const nextMode = get().viewMode === "source" ? "editing" : get().viewMode;
+        if (nextMode !== get().viewMode) persistViewMode(nextMode);
+        startTransition(() => {
+          set({
+            tabs: [...get().tabs, tab],
+            activeTabPath: path,
+            fileOpenError: null,
+            viewMode: nextMode,
+          });
+        });
+        return;
+      }
+
       let raw = await readFile(path);
       const draft = await loadDraft(path);
       if (draft) raw = draft;
 
       const { frontmatter, body } = parseFrontmatter(raw);
       const title = getNoteTitle(path, frontmatter);
+      const seeded =
+        typeof frontmatter.title === "string" && frontmatter.title
+          ? frontmatter
+          : { ...frontmatter, title };
       const tab: TabState = {
         path,
         title,
         isDirty: !!draft,
         content: body,
-        frontmatter,
+        frontmatter: seeded,
+        kind: "note",
       };
       startTransition(() => {
         set({
@@ -294,6 +337,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
   saveTab: async (path: string) => {
     const tab = get().tabs.find((t) => t.path === path);
     if (!tab) return;
+
+    if (isBinaryOpenable(tab.kind)) {
+      set({
+        tabs: get().tabs.map((item) =>
+          item.path === path ? { ...item, isDirty: false } : item,
+        ),
+      });
+      return;
+    }
 
     let content = tab.content;
     let frontmatter = tab.frontmatter;
@@ -389,6 +441,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
   setViewMode: (mode) => {
+    const tab = get().tabs.find((t) => t.path === get().activeTabPath);
+    if (mode === "source" && isBinaryOpenable(tab?.kind)) {
+      return;
+    }
     persistViewMode(mode);
     set({ viewMode: mode });
     if (mode !== "editing") {
@@ -399,8 +455,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   cycleViewMode: () => {
     const current = get().viewMode;
-    const index = VIEW_MODE_ORDER.indexOf(current);
-    const next = VIEW_MODE_ORDER[(index + 1) % VIEW_MODE_ORDER.length] ?? "editing";
+    const tab = get().tabs.find((t) => t.path === get().activeTabPath);
+    const order: EditorViewMode[] = isBinaryOpenable(tab?.kind)
+      ? ["reading", "editing"]
+      : VIEW_MODE_ORDER;
+    const index = order.indexOf(current);
+    const next = order[(index + 1) % order.length] ?? "editing";
     get().setViewMode(next);
   },
 }));
