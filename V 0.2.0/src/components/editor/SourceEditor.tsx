@@ -12,6 +12,7 @@ interface SourceEditorProps {
   fontSize: number;
   lineHeight: number;
   autoSaveMs: number;
+  active?: boolean;
 }
 
 export function SourceEditor({
@@ -21,6 +22,7 @@ export function SourceEditor({
   fontSize,
   lineHeight,
   autoSaveMs,
+  active = true,
 }: SourceEditorProps) {
   const updateTabContent = useAppStore((s) => s.updateTabContent);
   const markTabDirty = useAppStore((s) => s.markTabDirty);
@@ -32,9 +34,13 @@ export function SourceEditor({
   const [text, setText] = useState(() => serializeFrontmatter(frontmatter, content));
 
   useEffect(() => {
+    if (!active) {
+      setSourceScrollEl(null);
+      return;
+    }
     setSourceScrollEl(textareaRef.current);
     return () => setSourceScrollEl(null);
-  }, [setSourceScrollEl]);
+  }, [setSourceScrollEl, active]);
 
   useEffect(() => {
     const next = serializeFrontmatter(frontmatter, content);

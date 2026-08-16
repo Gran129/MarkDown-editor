@@ -1,5 +1,4 @@
 import { BookOpen, Code2, Pencil } from "lucide-react";
-import { startTransition } from "react";
 
 import { cn } from "@/lib/utils";
 import type { EditorViewMode } from "@/lib/types";
@@ -46,7 +45,7 @@ export function ViewModeSwitch() {
                 : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
               disabled && "opacity-50",
             )}
-            onClick={() => startTransition(() => setViewMode(mode.id))}
+            onClick={() => setViewMode(mode.id)}
           >
             <Icon className="h-3.5 w-3.5" />
             {mode.label}

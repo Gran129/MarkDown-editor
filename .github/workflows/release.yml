@@ -66,13 +66,13 @@ jobs:
             releases/MarkDown-editor.portable
             releases/INSTALL.zh-CN.txt
           body: |
-            Windows 安装包（v0.2.5）
+            Windows 安装包（v0.2.6）
 
-            - **安装包联网版**：`MarkDown-editor_0.2.5_x64-setup.exe` — 双击安装到电脑
-            - **便携版本地版**：`MarkDown-editor_0.2.5_portable.exe` — 免安装，可离线使用
+            - **安装包联网版**：`MarkDown-editor_0.2.6_x64-setup.exe` — 双击安装到电脑
+            - **便携版本地版**：`MarkDown-editor_0.2.6_portable.exe` — 免安装，可离线使用
 
             ### 修复
-            - 修复切换语法/阅读/编辑视图时的 removeChild DOM 报错
+            - 进一步修复切换语法/阅读/编辑视图时的 removeChild DOM 报错（同步切换、组件保活、Mermaid 异步竞态）
 
             安装说明见 `INSTALL.zh-CN.txt`。需要 Windows 10/11 64 位与 WebView2。
         env:

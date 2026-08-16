@@ -45,6 +45,7 @@ import { refreshSameFileBlockReferences, refreshSyncedBlockReferences } from "@/
 import { syncTablesInMarkdown } from "@/lib/table-markdown";
 import { finalizeWikiLinkMarkdown } from "@/lib/wiki-link-serialize";
 import { createWikiLinkSuggestionRenderer } from "@/lib/suggestion-renderer";
+import { cn } from "@/lib/utils";
 
 import { EditorToolbar } from "./EditorToolbar";
 import { TableMenu } from "./TableMenu";
@@ -293,6 +294,7 @@ export function MarkdownEditor({
       content: initialContent,
       editable,
       editorProps,
+      immediatelyRender: false,
       shouldRerenderOnTransaction: false,
       onContentError: ({ error }) => {
         console.error("TipTap content error:", error);
@@ -399,12 +401,15 @@ export function MarkdownEditor({
     if (!editor || !active || !editorContainerRef.current) return;
 
     let mermaidTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
     const renderMermaid = async () => {
-      const blocks = editorContainerRef.current?.querySelectorAll("pre code.language-mermaid");
-      if (!blocks?.length) return;
+      if (cancelled || !editorContainerRef.current) return;
+      const blocks = editorContainerRef.current.querySelectorAll("pre code.language-mermaid");
+      if (!blocks.length) return;
 
       for (const code of blocks) {
+        if (cancelled) return;
         const pre = code.parentElement;
         if (!pre || pre.dataset.mermaidRendered === "true") continue;
         const source = code.textContent?.trim();
@@ -416,6 +421,10 @@ export function MarkdownEditor({
 
         try {
           const { svg } = await mermaid.render(`mmd-${Math.random().toString(36).slice(2)}`, source);
+          if (cancelled) {
+            container.remove();
+            return;
+          }
           container.innerHTML = svg;
           pre.dataset.mermaidRendered = "true";
         } catch {
@@ -425,6 +434,7 @@ export function MarkdownEditor({
     };
 
     const scheduleMermaid = () => {
+      if (cancelled) return;
       if (mermaidTimer) clearTimeout(mermaidTimer);
       mermaidTimer = setTimeout(() => {
         void renderMermaid();
@@ -434,6 +444,7 @@ export function MarkdownEditor({
     scheduleMermaid();
     editor.on("update", scheduleMermaid);
     return () => {
+      cancelled = true;
       if (mermaidTimer) clearTimeout(mermaidTimer);
       editor.off("update", scheduleMermaid);
     };
@@ -441,12 +452,21 @@ export function MarkdownEditor({
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
-      {showToolbar && (
-        <div className="w-full min-w-0 shrink-0 overflow-hidden">
-          <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
-        </div>
-      )}
-      {showToolbar && <TableMenu editor={editor} />}
+      <div
+        className={cn(
+          "w-full min-w-0 shrink-0 overflow-hidden",
+          !showToolbar && "pointer-events-none invisible h-0 overflow-hidden",
+        )}
+        aria-hidden={!showToolbar}
+      >
+        <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
+      </div>
+      <div
+        className={cn(!showToolbar && "pointer-events-none invisible h-0 overflow-hidden")}
+        aria-hidden={!showToolbar}
+      >
+        <TableMenu editor={editor} />
+      </div>
       <div ref={editorContainerRef} className="relative min-h-0 flex-1 overflow-auto">
         {editor ? (
           <EditorContent editor={editor} className="min-h-full" />
