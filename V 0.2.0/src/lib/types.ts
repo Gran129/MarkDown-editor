@@ -26,6 +26,9 @@ export interface BacklinkResult {
 
 export interface AppSettings {
   theme: "light" | "dark" | "system";
+  auto_save_enabled: boolean;
+  auto_save_minutes: number;
+  /** Kept for settings.json compatibility; derived from auto_save_minutes. */
   auto_save_ms: number;
   daily_notes_folder: string;
   daily_notes_template: string;

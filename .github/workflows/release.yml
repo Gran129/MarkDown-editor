@@ -66,13 +66,20 @@ jobs:
             releases/MarkDown-editor.portable
             releases/INSTALL.zh-CN.txt
           body: |
-            Windows 安装包（v0.2.5）
+            Windows 安装包（v0.2.6）
 
-            - **安装包联网版**：`MarkDown-editor_0.2.5_x64-setup.exe` — 双击安装到电脑
-            - **便携版本地版**：`MarkDown-editor_0.2.5_portable.exe` — 免安装，可离线使用
+            - **安装包联网版**：`MarkDown-editor_0.2.6_x64-setup.exe` — 双击安装到电脑
+            - **便携版本地版**：`MarkDown-editor_0.2.6_portable.exe` — 免安装，可离线使用
 
-            ### 修复
-            - 修复切换语法/阅读/编辑视图时的 removeChild DOM 报错
+            ### 修复（基于 v0.2.5）
+            - 切换语法/阅读/编辑视图时的 removeChild DOM 报错
+            - 编辑视图 Enter 无法换行、约 2 秒回退改动、保存按钮清空内容、标签栏抖动
+            - 自动保存改为可选，间隔单位为分钟（默认关闭）
+            - 插入 Office 文件后在编辑区显示预览
+            - 过长文件名标签堆叠、标题栏为空、标题/标签字号过小
+            - 加密导出无法导入；文件树支持新建文件夹/文件与导入
+            - 下划线/删除线颜色改为功能下拉；四级标题与下拉分开
+            - 有序列表序号不显示；代码块支持语言选择与语法高亮
 
             安装说明见 `INSTALL.zh-CN.txt`。需要 Windows 10/11 64 位与 WebView2。
         env:

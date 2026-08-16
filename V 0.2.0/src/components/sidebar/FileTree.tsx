@@ -6,6 +6,8 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  FolderUp,
+  FileUp,
   Pencil,
   RefreshCw,
   Trash2,
@@ -32,10 +34,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { FileNode } from "@/lib/types";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   createFile,
   createFolder,
   deletePath,
+  importIntoVault,
   movePath,
   renamePath,
   revealInExplorer,
@@ -64,6 +68,26 @@ interface PromptState {
 
 function getParentPath(node: FileNode): string {
   return node.is_dir ? node.path : node.path.replace(/[/\\][^/\\]+$/, "");
+}
+
+async function pickAndImport(
+  vaultPath: string,
+  destFolder: string,
+  directory: boolean,
+  encryptedOnly = false,
+): Promise<string | null> {
+  const selected = await open({
+    multiple: false,
+    directory,
+    title: directory ? "导入文件夹" : encryptedOnly ? "导入加密笔记" : "导入文件",
+    filters: directory
+      ? undefined
+      : encryptedOnly
+        ? [{ name: "加密笔记", extensions: ["mdte", "mde"] }]
+        : undefined,
+  });
+  if (!selected || Array.isArray(selected)) return null;
+  return importIntoVault(vaultPath, selected, destFolder);
 }
 
 function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPath: string; depth?: number }) {
@@ -228,6 +252,52 @@ function FileTreeNode({ node, vaultPath, depth = 0 }: { node: FileNode; vaultPat
             <FolderPlus className="mr-2 h-4 w-4" />
             新建文件夹
           </ContextMenuItem>
+          <ContextMenuItem
+            onSelect={() => {
+              void (async () => {
+                try {
+                  await pickAndImport(vaultPath, getParentPath(node), false);
+                  await refreshFileTree();
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : "导入失败");
+                }
+              })();
+            }}
+          >
+            <FileUp className="mr-2 h-4 w-4" />
+            导入文件
+          </ContextMenuItem>
+          <ContextMenuItem
+            onSelect={() => {
+              void (async () => {
+                try {
+                  await pickAndImport(vaultPath, getParentPath(node), true);
+                  await refreshFileTree();
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : "导入失败");
+                }
+              })();
+            }}
+          >
+            <FolderUp className="mr-2 h-4 w-4" />
+            导入文件夹
+          </ContextMenuItem>
+          <ContextMenuItem
+            onSelect={() => {
+              void (async () => {
+                try {
+                  const imported = await pickAndImport(vaultPath, getParentPath(node), false, true);
+                  await refreshFileTree();
+                  if (imported) await openFile(imported);
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : "导入加密笔记失败");
+                }
+              })();
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            导入加密笔记
+          </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onSelect={() => openPrompt("rename", stripNoteExtension(node.name))}>
             <Pencil className="mr-2 h-4 w-4" />
@@ -344,13 +414,23 @@ export function FileTreeSidebar() {
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const [newNoteOpen, setNewNoteOpen] = useState(false);
   const [newNoteName, setNewNoteName] = useState("");
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const newNoteInputRef = useRef<HTMLInputElement>(null);
+  const newFolderInputRef = useRef<HTMLInputElement>(null);
+  const openFile = useAppStore((s) => s.openFile);
 
   useEffect(() => {
     if (newNoteOpen && newNoteInputRef.current) {
       newNoteInputRef.current.focus();
     }
   }, [newNoteOpen]);
+
+  useEffect(() => {
+    if (newFolderOpen && newFolderInputRef.current) {
+      newFolderInputRef.current.focus();
+    }
+  }, [newFolderOpen]);
 
   const handleNewNote = async () => {
     if (!vaultPath) return;
@@ -360,6 +440,29 @@ export function FileTreeSidebar() {
     setNewNoteOpen(false);
     setNewNoteName("");
     await refreshFileTree();
+  };
+
+  const handleNewFolder = async () => {
+    if (!vaultPath) return;
+    const name = newFolderName.trim();
+    if (!name) return;
+    await createFolder(`${vaultPath}/${name}`);
+    setNewFolderOpen(false);
+    setNewFolderName("");
+    await refreshFileTree();
+  };
+
+  const handleImport = async (directory: boolean, encryptedOnly = false) => {
+    if (!vaultPath) return;
+    try {
+      const imported = await pickAndImport(vaultPath, vaultPath, directory, encryptedOnly);
+      await refreshFileTree();
+      if (imported && !directory && isNoteFileName(imported)) {
+        await openFile(imported);
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "导入失败");
+    }
   };
 
   const matchingPaths = new Set(
@@ -381,11 +484,11 @@ export function FileTreeSidebar() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-9 items-center justify-between border-b border-sidebar-border px-3">
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-1 border-b border-sidebar-border px-2 py-1">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           文件
         </span>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-0.5">
           <Button
             variant="ghost"
             size="icon"
@@ -398,6 +501,49 @@ export function FileTreeSidebar() {
             aria-label="新建笔记"
           >
             <FileText className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              setNewFolderName("");
+              setNewFolderOpen(true);
+            }}
+            title="新建文件夹"
+            aria-label="新建文件夹"
+          >
+            <FolderPlus className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => void handleImport(false)}
+            title="导入文件"
+            aria-label="导入文件"
+          >
+            <FileUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => void handleImport(true)}
+            title="导入文件夹"
+            aria-label="导入文件夹"
+          >
+            <FolderUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => void handleImport(false, true)}
+            title="导入加密笔记 (.mdte)"
+            aria-label="导入加密笔记"
+          >
+            <Download className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
@@ -456,6 +602,29 @@ export function FileTreeSidebar() {
               取消
             </Button>
             <Button onClick={() => void handleNewNote()}>确定</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>新建文件夹</DialogTitle>
+          </DialogHeader>
+          <Input
+            ref={newFolderInputRef}
+            value={newFolderName}
+            placeholder="文件夹名称"
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleNewFolder();
+            }}
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setNewFolderOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={() => void handleNewFolder()}>确定</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -14,9 +14,26 @@ fn default_line_height() -> f64 {
     1.75
 }
 
+fn default_auto_save_enabled() -> bool {
+    false
+}
+
+fn default_auto_save_minutes() -> u64 {
+    1
+}
+
+fn default_auto_save_ms() -> u64 {
+    60_000
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     pub theme: String,
+    #[serde(default = "default_auto_save_enabled")]
+    pub auto_save_enabled: bool,
+    #[serde(default = "default_auto_save_minutes")]
+    pub auto_save_minutes: u64,
+    #[serde(default = "default_auto_save_ms")]
     pub auto_save_ms: u64,
     pub daily_notes_folder: String,
     pub daily_notes_template: String,
@@ -30,7 +47,9 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: "system".to_string(),
-            auto_save_ms: 2000,
+            auto_save_enabled: default_auto_save_enabled(),
+            auto_save_minutes: default_auto_save_minutes(),
+            auto_save_ms: default_auto_save_ms(),
             daily_notes_folder: "Daily".to_string(),
             daily_notes_template: String::new(),
             font_size: 16,
@@ -470,5 +489,91 @@ pub fn export_note(
         &format,
         vault.as_deref().map(Path::new),
     )?;
+    Ok(dest.to_string_lossy().into_owned())
+}
+
+fn unique_copy_dest(dir: &Path, file_name: &str) -> PathBuf {
+    let mut dest = dir.join(file_name);
+    if !dest.exists() {
+        return dest;
+    }
+    let stem = Path::new(file_name)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| file_name.to_string());
+    let ext = Path::new(file_name)
+        .extension()
+        .map(|s| s.to_string_lossy().into_owned());
+    let mut index = 2;
+    loop {
+        dest = match &ext {
+            Some(e) => dir.join(format!("{stem}-{index}.{e}")),
+            None => dir.join(format!("{stem}-{index}")),
+        };
+        if !dest.exists() {
+            return dest;
+        }
+        index += 1;
+    }
+}
+
+fn copy_dir_recursive(source: &Path, dest: &Path) -> Result<(), String> {
+    fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let from = entry.path();
+        let to = dest.join(entry.file_name());
+        if from.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else {
+            fs::copy(&from, &to).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn import_into_vault(
+    vault_path: String,
+    source_path: String,
+    dest_folder: Option<String>,
+) -> Result<String, String> {
+    let vault = PathBuf::from(&vault_path);
+    if !vault.is_dir() {
+        return Err("Vault 路径不存在".to_string());
+    }
+    let dest_dir = dest_folder
+        .filter(|p| !p.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| vault.clone());
+    fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+
+    let source = PathBuf::from(&source_path);
+    if !source.exists() {
+        return Err("要导入的路径不存在".to_string());
+    }
+
+    if source.is_dir() {
+        let name = source
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(|| "folder".to_string());
+        let dest = unique_copy_dest(&dest_dir, &name);
+        copy_dir_recursive(&source, &dest)?;
+        return Ok(dest.to_string_lossy().into_owned());
+    }
+
+    if crate::mde::is_encrypted_note(&source) {
+        let dest = crate::mde::import_encrypted_to_dir(&source, &dest_dir)?;
+        return Ok(dest.to_string_lossy().into_owned());
+    }
+
+    let file_name = source
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .ok_or_else(|| "无法读取文件名".to_string())?;
+    let dest = unique_copy_dest(&dest_dir, &file_name);
+    fs::copy(&source, &dest).map_err(|e| e.to_string())?;
     Ok(dest.to_string_lossy().into_owned())
 }

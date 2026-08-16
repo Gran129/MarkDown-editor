@@ -92,13 +92,13 @@ function postprocessCallouts(md: string): string {
 function preprocessEmbeds(md: string): string {
   return md.replace(/!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, target: string, size?: string) => {
     const attrs = size ? ` data-size="${escapeAttr(size)}"` : "";
-    return `<span data-embed="true" data-target="${escapeAttr(target)}"${attrs} class="embed">![[${target}]]</span>`;
+    return `<div data-embed="true" data-target="${escapeAttr(target)}"${attrs} class="embed">![[${target}]]</div>`;
   });
 }
 
 function postprocessEmbeds(md: string): string {
   return md.replace(
-    /<span[^>]*data-embed="true"[^>]*data-target="([^"]+)"[^>]*>[\s\S]*?<\/span>/gi,
+    /<(?:div|span)[^>]*data-embed="true"[^>]*data-target="([^"]+)"[^>]*>[\s\S]*?<\/(?:div|span)>/gi,
     (_, target: string) => `![[${target}]]`,
   );
 }

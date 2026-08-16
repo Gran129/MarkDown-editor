@@ -173,3 +173,15 @@ export async function exportNote(
 ): Promise<string> {
   return invoke<string>("export_note", { sourcePath, destPath, content, format });
 }
+
+export async function importIntoVault(
+  vaultPath: string,
+  sourcePath: string,
+  destFolder?: string | null,
+): Promise<string> {
+  return invoke<string>("import_into_vault", {
+    vaultPath,
+    sourcePath,
+    destFolder: destFolder ?? null,
+  });
+}

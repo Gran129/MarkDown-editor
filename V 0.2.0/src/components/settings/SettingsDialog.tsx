@@ -119,13 +119,30 @@ export function SettingsDialog() {
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium">自动保存间隔 (ms)</label>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={settings.auto_save_enabled}
+                onChange={(e) =>
+                  void updateSettings({ auto_save_enabled: e.target.checked })
+                }
+              />
+              启用自动保存
+            </label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              关闭后仅在点击保存或 Ctrl+S 时写入文件，可避免编辑被覆盖。
+            </p>
+            <label className="mt-3 block text-sm font-medium">自动保存间隔（分钟）</label>
             <Input
               type="number"
               className="mt-1"
-              value={settings.auto_save_ms}
+              min={1}
+              max={60}
+              disabled={!settings.auto_save_enabled}
+              value={settings.auto_save_minutes}
               onChange={(e) =>
-                void updateSettings({ auto_save_ms: Number(e.target.value) })
+                void updateSettings({ auto_save_minutes: Number(e.target.value) })
               }
             />
           </div>

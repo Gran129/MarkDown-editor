@@ -15,13 +15,16 @@ import {
   startVaultWatcher,
   writeFile,
 } from "@/lib/tauri-api";
+import { getMarkdownFromEditor } from "@/lib/editor-markdown";
 import {
   getNoteTitle,
   parseFrontmatter,
   serializeFrontmatter,
+  tryParseFrontmatter,
 } from "@/lib/markdown";
 import type { AppSettings, EditorViewMode, FileNode, TabState, TagInfo } from "@/lib/types";
 import { loadSidebarWidths } from "@/components/layout/ResizableSidebar";
+import { useEditorStore } from "@/stores/editor-store";
 
 interface AppStore {
   vaultPath: string | null;
@@ -45,6 +48,7 @@ interface AppStore {
   vaultTags: TagInfo[];
   viewMode: EditorViewMode;
   fileOpenError: string | null;
+  ignoreVaultEventsUntil: number;
 
   init: () => Promise<void>;
   openVault: (path?: string) => Promise<void>;
@@ -73,17 +77,29 @@ interface AppStore {
   setViewMode: (mode: EditorViewMode) => void;
   cycleViewMode: () => void;
   clearFileOpenError: () => void;
+  markSelfWrite: (ms?: number) => void;
 }
 
 const defaultSettings: AppSettings = {
   theme: "system",
-  auto_save_ms: 2000,
+  auto_save_enabled: false,
+  auto_save_minutes: 1,
+  auto_save_ms: 60_000,
   daily_notes_folder: "Daily",
   daily_notes_template: "",
   font_size: 16,
   line_height: 1.75,
   default_vault: null,
 };
+
+function clampAutoSaveMinutes(value: number): number {
+  if (!Number.isFinite(value)) return defaultSettings.auto_save_minutes;
+  return Math.min(60, Math.max(1, Math.round(value)));
+}
+
+function deriveAutoSaveMs(minutes: number): number {
+  return clampAutoSaveMinutes(minutes) * 60_000;
+}
 
 function applyTheme(theme: "light" | "dark" | "system") {
   const root = document.documentElement;
@@ -98,10 +114,18 @@ function clampLineHeight(value: number): number {
   return Math.min(2.4, Math.max(1.2, value));
 }
 
-function normalizeSettings(loaded: Partial<AppSettings>): AppSettings {
+function normalizeSettings(loaded: Partial<AppSettings> & { auto_save_ms?: number }): AppSettings {
+  const minutes = loaded.auto_save_minutes
+    ? clampAutoSaveMinutes(loaded.auto_save_minutes)
+    : loaded.auto_save_ms && loaded.auto_save_ms >= 60_000
+      ? clampAutoSaveMinutes(loaded.auto_save_ms / 60_000)
+      : defaultSettings.auto_save_minutes;
   return {
     ...defaultSettings,
     ...loaded,
+    auto_save_enabled: Boolean(loaded.auto_save_enabled),
+    auto_save_minutes: minutes,
+    auto_save_ms: deriveAutoSaveMs(minutes),
     line_height: clampLineHeight(loaded.line_height ?? defaultSettings.line_height),
   };
 }
@@ -155,6 +179,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   vaultTags: [],
   viewMode: loadViewMode(),
   fileOpenError: null,
+  ignoreVaultEventsUntil: 0,
 
   init: async () => {
     const loaded = await loadSettings();
@@ -233,6 +258,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   clearFileOpenError: () => set({ fileOpenError: null }),
 
+  markSelfWrite: (ms = 1500) => {
+    set({ ignoreVaultEventsUntil: Date.now() + ms });
+  },
+
   closeTab: (path: string) => {
     const { tabs, activeTabPath } = get();
     const next = tabs.filter((t) => t.path !== path);
@@ -265,21 +294,38 @@ export const useAppStore = create<AppStore>((set, get) => ({
   saveTab: async (path: string) => {
     const tab = get().tabs.find((t) => t.path === path);
     if (!tab) return;
-    const full = serializeFrontmatter(tab.frontmatter, tab.content);
+
+    let content = tab.content;
+    let frontmatter = tab.frontmatter;
+    const viewMode = get().viewMode;
+    const editorState = useEditorStore.getState();
+
+    if (viewMode === "source") {
+      const latest = editorState.sourceScrollEl?.value;
+      if (latest != null) {
+        const parsed = tryParseFrontmatter(latest);
+        if (parsed) {
+          content = parsed.body;
+          frontmatter = parsed.frontmatter;
+        }
+      }
+    } else if (viewMode === "editing") {
+      const editor = editorState.editor;
+      if (editor && !editor.isDestroyed) {
+        try {
+          content = getMarkdownFromEditor(editor);
+        } catch (error) {
+          console.error("Failed to flush editor before save:", error);
+        }
+      }
+    }
+
+    const full = serializeFrontmatter(frontmatter, content);
+    get().markSelfWrite(2000);
     const savedPath = await writeFile(path, full);
     await clearDraft(path);
     if (savedPath !== path) {
       await clearDraft(savedPath);
-    }
-    let nextContent = tab.content;
-    let nextFrontmatter = tab.frontmatter;
-    try {
-      const raw = await readFile(savedPath);
-      const parsed = parseFrontmatter(raw);
-      nextContent = parsed.body;
-      nextFrontmatter = parsed.frontmatter;
-    } catch {
-      /* keep the in-memory document if re-read fails */
     }
     set({
       tabs: get().tabs.map((item) =>
@@ -287,21 +333,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
           ? {
               ...item,
               path: savedPath,
-              title: getNoteTitle(savedPath, nextFrontmatter),
-              content: nextContent,
-              frontmatter: nextFrontmatter,
+              title: getNoteTitle(savedPath, frontmatter),
+              content,
+              frontmatter,
               isDirty: false,
             }
           : item,
       ),
       activeTabPath: get().activeTabPath === path ? savedPath : get().activeTabPath,
     });
-    const vault = get().vaultPath;
-    if (vault) {
-      await indexVault(vault);
-      await get().refreshVaultTags();
-      await get().refreshFileTree();
-    }
     return;
   },
 
@@ -323,11 +363,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   updateSettings: async (partial) => {
     const merged = { ...get().settings, ...partial };
-    const settings: AppSettings = {
-      ...defaultSettings,
-      ...merged,
-      line_height: clampLineHeight(merged.line_height ?? defaultSettings.line_height),
-    };
+    const settings = normalizeSettings(merged);
     await saveSettings(settings);
     set({ settings });
     if (partial.theme) applyTheme(partial.theme);

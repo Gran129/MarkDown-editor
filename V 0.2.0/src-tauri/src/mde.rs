@@ -89,6 +89,51 @@ pub fn extract_package(package: &MdePackage, dest_dir: &Path) -> Result<PathBuf,
     Ok(md_path)
 }
 
+/// Import an encrypted `.mdte` / `.mde` package into a vault folder as a working `.md` note.
+pub fn import_encrypted_to_dir(source: &Path, dest_dir: &Path) -> Result<PathBuf, String> {
+    let data = fs::read(source).map_err(|e| e.to_string())?;
+    let package = decode_mde(&data)?;
+    fs::create_dir_all(dest_dir).map_err(|e| e.to_string())?;
+
+    let stem = Path::new(&package.markdown_name)
+        .file_stem()
+        .map(|n| n.to_string_lossy().into_owned())
+        .filter(|n| !n.is_empty())
+        .or_else(|| {
+            source
+                .file_stem()
+                .map(|n| n.to_string_lossy().into_owned())
+                .filter(|n| !n.is_empty())
+        })
+        .unwrap_or_else(|| "note".to_string());
+
+    let mut md_path = dest_dir.join(format!("{stem}.{WORKING_EXT}"));
+    let mut index = 2;
+    while md_path.exists() {
+        md_path = dest_dir.join(format!("{stem}-{index}.{WORKING_EXT}"));
+        index += 1;
+    }
+
+    fs::write(&md_path, &package.markdown).map_err(|e| e.to_string())?;
+
+    let resources = resources_dir(&md_path);
+    fs::create_dir_all(&resources).map_err(|e| e.to_string())?;
+    for (name, bytes) in &package.resources {
+        let relative = sanitize_entry_name(name)?;
+        let stripped = strip_resources_prefix(&relative);
+        let out = resources.join(stripped);
+        if !out.starts_with(&resources) {
+            return Err("压缩包内含非法路径".to_string());
+        }
+        if let Some(parent) = out.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(&out, bytes).map_err(|e| e.to_string())?;
+    }
+    hide_dot_resources(&resources);
+    Ok(md_path)
+}
+
 pub fn encode_mde(
     markdown_name: &str,
     markdown: &str,

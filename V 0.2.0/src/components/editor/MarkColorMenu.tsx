@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { Palette } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
   MARK_COLOR_PRESETS,
   type ColoredMarkName,
 } from "@/extensions/markdown-marks";
+import { cn } from "@/lib/utils";
 
 interface MarkColorMenuProps {
   editor: Editor;
@@ -69,39 +70,30 @@ export function MarkColorMenu({
 }: MarkColorMenuProps) {
   return (
     <DropdownMenu>
-      <div className="flex items-center">
+      <DropdownMenuTrigger asChild>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className={`h-8 w-8 rounded-r-none ${active ? "bg-accent" : ""}`}
-          onClick={onToggle}
-          title={title}
+          className={cn("h-8 w-9 rounded-md", active && "bg-primary/10 text-primary")}
+          title={`${title}（点击选择颜色或开关）`}
           aria-label={title}
         >
           {icon}
+          <ChevronDown className="ml-0.5 h-2.5 w-2.5 opacity-70" />
         </Button>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-4 rounded-l-none px-0"
-            title={`${title} — 选择颜色`}
-            aria-label={`${title}颜色`}
-          >
-            <Palette className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-      </div>
-      <DropdownMenuContent align="start" className="w-36">
-        <DropdownMenuLabel className="text-xs">颜色</DropdownMenuLabel>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-40">
+        <DropdownMenuLabel className="text-xs">{title}</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onToggle}>{active ? `取消${title}` : `应用${title}`}</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs">颜色</DropdownMenuLabel>
         {MARK_COLOR_PRESETS.map((preset) => (
           <DropdownMenuItem
             key={preset.label}
             onClick={() => {
-              if (!editor.isActive(mark === "underline" ? "underline" : mark)) {
+              if (!editor.isActive(mark)) {
                 onToggle();
               }
               applyMarkColor(editor, mark, preset.value);

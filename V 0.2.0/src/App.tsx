@@ -92,8 +92,10 @@ function useVaultWatcher() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const unlisten = listen("vault-changed", () => {
+      if (Date.now() < useAppStore.getState().ignoreVaultEventsUntil) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
+        if (Date.now() < useAppStore.getState().ignoreVaultEventsUntil) return;
         void (async () => {
           await refreshFileTree();
           const vaultPath = useAppStore.getState().vaultPath;

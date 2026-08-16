@@ -36,15 +36,15 @@ import { MathInline } from "@/extensions/math-inline";
 import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { saveDraft } from "@/lib/tauri-api";
-import { resolveLinkTarget, sanitizeBrokenWikiLinksInMarkdown } from "@/lib/link-attrs";
+import { getMarkdownFromEditor } from "@/lib/editor-markdown";
+import { serializeFrontmatter } from "@/lib/markdown";
+import { resolveLinkTarget } from "@/lib/link-attrs";
 import { isRemoteMedia, resolveNoteMediaFile } from "@/lib/note-format";
 import { isOfficeFileName } from "@/lib/office";
-import { preprocessMarkdown, postprocessMarkdown } from "@/lib/markdown-transform";
-import { syncParagraphBlocksInMarkdown } from "@/lib/block-markdown";
+import { preprocessMarkdown } from "@/lib/markdown-transform";
 import { refreshSameFileBlockReferences, refreshSyncedBlockReferences } from "@/lib/block-sync";
-import { syncTablesInMarkdown } from "@/lib/table-markdown";
-import { finalizeWikiLinkMarkdown } from "@/lib/wiki-link-serialize";
 import { createWikiLinkSuggestionRenderer } from "@/lib/suggestion-renderer";
+import { cn } from "@/lib/utils";
 
 import { EditorToolbar } from "./EditorToolbar";
 import { TableMenu } from "./TableMenu";
@@ -62,7 +62,8 @@ interface MarkdownEditorProps {
   frontmatter: Record<string, unknown>;
   fontSize: number;
   lineHeight: number;
-  autoSaveMs: number;
+  autoSaveEnabled?: boolean;
+  autoSaveMinutes?: number;
   noteNames: string[];
   active?: boolean;
   editable?: boolean;
@@ -78,7 +79,8 @@ export function MarkdownEditor({
   frontmatter,
   fontSize,
   lineHeight,
-  autoSaveMs,
+  autoSaveEnabled = false,
+  autoSaveMinutes = 1,
   noteNames,
   active = true,
   editable = true,
@@ -88,9 +90,9 @@ export function MarkdownEditor({
   onTagClick,
 }: MarkdownEditorProps) {
   const updateTabContent = useAppStore((s) => s.updateTabContent);
+  const markSelfWrite = useAppStore((s) => s.markSelfWrite);
   const editableRef = useRef(editable);
   editableRef.current = editable;
-  const saveTab = useAppStore((s) => s.saveTab);
   const tabs = useAppStore((s) => s.tabs);
   const setEditor = useEditorStore((s) => s.setEditor);
   const setEditorScrollEl = useEditorStore((s) => s.setEditorScrollEl);
@@ -113,16 +115,12 @@ export function MarkdownEditor({
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
   const editorRef = useRef<Editor | null>(null);
-
-  const getMarkdownFromEditor = useCallback((ed: Editor) => {
-    const storage = ed.storage as { markdown: { getMarkdown: () => string } };
-    const raw = storage.markdown.getMarkdown();
-    const repaired = finalizeWikiLinkMarkdown(ed, raw);
-    const withTables = syncTablesInMarkdown(ed, repaired);
-    const withParagraphs = syncParagraphBlocksInMarkdown(ed, withTables);
-    const body = postprocessMarkdown(withParagraphs);
-    return sanitizeBrokenWikiLinksInMarkdown(body);
-  }, []);
+  const noteNamesRef = useRef(noteNames);
+  noteNamesRef.current = noteNames;
+  const autoSaveEnabledRef = useRef(autoSaveEnabled);
+  autoSaveEnabledRef.current = autoSaveEnabled;
+  const autoSaveMinutesRef = useRef(autoSaveMinutes);
+  autoSaveMinutesRef.current = autoSaveMinutes;
 
   const initialContent = useMemo(() => {
     try {
@@ -131,7 +129,9 @@ export function MarkdownEditor({
       console.error("Failed to preprocess markdown:", error);
       return content;
     }
-  }, [content, noteNames]);
+    // Only used on first mount of this editor instance (keyed by path).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const extensions = useMemo(
     () => [
@@ -195,7 +195,7 @@ export function MarkdownEditor({
           char: "[[",
           allowSpaces: true,
           items: ({ query }: { query: string }) =>
-            noteNames
+            noteNamesRef.current
               .filter((n) => n.toLowerCase().includes(query.toLowerCase()))
               .slice(0, 12)
               .map((n) => ({ id: n, label: n })),
@@ -215,7 +215,7 @@ export function MarkdownEditor({
       MathBlock,
       MathInline,
     ],
-    [noteNames],
+    [],
   );
 
   const editorProps = useMemo(
@@ -293,6 +293,7 @@ export function MarkdownEditor({
       content: initialContent,
       editable,
       editorProps,
+      immediatelyRender: false,
       shouldRerenderOnTransaction: false,
       onContentError: ({ error }) => {
         console.error("TipTap content error:", error);
@@ -318,11 +319,13 @@ export function MarkdownEditor({
         }, 400);
 
         if (saveTimer.current) clearTimeout(saveTimer.current);
+        if (!autoSaveEnabledRef.current) return;
+        const delay = Math.max(1, autoSaveMinutesRef.current) * 60_000;
         saveTimer.current = setTimeout(async () => {
-          const full = serializeWithFrontmatter(frontmatterRef.current, md);
+          const full = serializeFrontmatter(frontmatterRef.current, md);
+          markSelfWrite(2000);
           await saveDraft(pathRef.current, full);
-          await saveTab(pathRef.current);
-        }, autoSaveMs);
+        }, delay);
       },
     },
     [extensions],
@@ -369,7 +372,7 @@ export function MarkdownEditor({
       const md = getMarkdownFromEditor(ed);
       updateTabContent(pathRef.current, md, frontmatterRef.current);
     };
-  }, [getMarkdownFromEditor, updateTabContent]);
+  }, [updateTabContent]);
 
   useEffect(() => {
     if (!editor || !active) return;
@@ -399,12 +402,15 @@ export function MarkdownEditor({
     if (!editor || !active || !editorContainerRef.current) return;
 
     let mermaidTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
     const renderMermaid = async () => {
-      const blocks = editorContainerRef.current?.querySelectorAll("pre code.language-mermaid");
-      if (!blocks?.length) return;
+      if (cancelled || !editorContainerRef.current) return;
+      const blocks = editorContainerRef.current.querySelectorAll("pre code.language-mermaid");
+      if (!blocks.length) return;
 
       for (const code of blocks) {
+        if (cancelled) return;
         const pre = code.parentElement;
         if (!pre || pre.dataset.mermaidRendered === "true") continue;
         const source = code.textContent?.trim();
@@ -416,6 +422,10 @@ export function MarkdownEditor({
 
         try {
           const { svg } = await mermaid.render(`mmd-${Math.random().toString(36).slice(2)}`, source);
+          if (cancelled) {
+            container.remove();
+            return;
+          }
           container.innerHTML = svg;
           pre.dataset.mermaidRendered = "true";
         } catch {
@@ -425,6 +435,7 @@ export function MarkdownEditor({
     };
 
     const scheduleMermaid = () => {
+      if (cancelled) return;
       if (mermaidTimer) clearTimeout(mermaidTimer);
       mermaidTimer = setTimeout(() => {
         void renderMermaid();
@@ -434,6 +445,7 @@ export function MarkdownEditor({
     scheduleMermaid();
     editor.on("update", scheduleMermaid);
     return () => {
+      cancelled = true;
       if (mermaidTimer) clearTimeout(mermaidTimer);
       editor.off("update", scheduleMermaid);
     };
@@ -441,12 +453,21 @@ export function MarkdownEditor({
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
-      {showToolbar && (
-        <div className="w-full min-w-0 shrink-0 overflow-hidden">
-          <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
-        </div>
-      )}
-      {showToolbar && <TableMenu editor={editor} />}
+      <div
+        className={cn(
+          "w-full min-w-0 shrink-0 overflow-hidden",
+          !showToolbar && "pointer-events-none invisible h-0 overflow-hidden",
+        )}
+        aria-hidden={!showToolbar}
+      >
+        <EditorToolbar editor={editor} filePath={path} noteNames={noteNames} />
+      </div>
+      <div
+        className={cn(!showToolbar && "pointer-events-none invisible h-0 overflow-hidden")}
+        aria-hidden={!showToolbar}
+      >
+        <TableMenu editor={editor} />
+      </div>
       <div ref={editorContainerRef} className="relative min-h-0 flex-1 overflow-auto">
         {editor ? (
           <EditorContent editor={editor} className="min-h-full" />
@@ -463,18 +484,6 @@ export function MarkdownEditor({
       </div>
     </div>
   );
-}
-
-function serializeWithFrontmatter(
-  frontmatter: Record<string, unknown>,
-  body: string,
-): string {
-  if (Object.keys(frontmatter).length === 0) return body;
-  const lines = Object.entries(frontmatter).map(([k, v]) => {
-    if (Array.isArray(v)) return `${k}: [${v.map((i) => `"${i}"`).join(", ")}]`;
-    return `${k}: ${v}`;
-  });
-  return `---\n${lines.join("\n")}\n---\n\n${body}`;
 }
 
 export function useEditorSaveShortcut(saveTab: (path: string) => void, path: string) {

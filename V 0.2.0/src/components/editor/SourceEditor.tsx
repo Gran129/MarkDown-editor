@@ -11,7 +11,9 @@ interface SourceEditorProps {
   frontmatter: Record<string, unknown>;
   fontSize: number;
   lineHeight: number;
-  autoSaveMs: number;
+  autoSaveEnabled?: boolean;
+  autoSaveMinutes?: number;
+  active?: boolean;
 }
 
 export function SourceEditor({
@@ -20,11 +22,13 @@ export function SourceEditor({
   frontmatter,
   fontSize,
   lineHeight,
-  autoSaveMs,
+  autoSaveEnabled = false,
+  autoSaveMinutes = 1,
+  active = true,
 }: SourceEditorProps) {
   const updateTabContent = useAppStore((s) => s.updateTabContent);
   const markTabDirty = useAppStore((s) => s.markTabDirty);
-  const saveTab = useAppStore((s) => s.saveTab);
+  const markSelfWrite = useAppStore((s) => s.markSelfWrite);
   const setSourceScrollEl = useEditorStore((s) => s.setSourceScrollEl);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -32,9 +36,13 @@ export function SourceEditor({
   const [text, setText] = useState(() => serializeFrontmatter(frontmatter, content));
 
   useEffect(() => {
+    if (!active) {
+      setSourceScrollEl(null);
+      return;
+    }
     setSourceScrollEl(textareaRef.current);
     return () => setSourceScrollEl(null);
-  }, [setSourceScrollEl]);
+  }, [setSourceScrollEl, active]);
 
   useEffect(() => {
     const next = serializeFrontmatter(frontmatter, content);
@@ -48,24 +56,18 @@ export function SourceEditor({
       setText(next);
       markTabDirty(path, true);
       const parsed = tryParseFrontmatter(next);
-      if (!parsed) {
-        if (saveTimer.current) clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(() => {
-          void saveDraft(path, next);
-        }, autoSaveMs);
-        return;
+      if (parsed) {
+        updateTabContent(path, parsed.body, parsed.frontmatter);
       }
-      updateTabContent(path, parsed.body, parsed.frontmatter);
-
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (!autoSaveEnabled) return;
+      const delay = Math.max(1, autoSaveMinutes) * 60_000;
       saveTimer.current = setTimeout(() => {
-        void (async () => {
-          await saveDraft(path, next);
-          await saveTab(path);
-        })();
-      }, autoSaveMs);
+        markSelfWrite(2000);
+        void saveDraft(path, next);
+      }, delay);
     },
-    [autoSaveMs, markTabDirty, path, saveTab, updateTabContent],
+    [autoSaveEnabled, autoSaveMinutes, markSelfWrite, markTabDirty, path, updateTabContent],
   );
 
   useEffect(() => {

@@ -352,37 +352,45 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
             </ToolbarButton>
           );
         })}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              title="四级至六级标题"
-              aria-label="四级至六级标题"
-            >
-              <Heading4 className="h-4 w-4" />
-              <ChevronDown className="ml-0.5 h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {[4, 5, 6].map((level) => (
-              <DropdownMenuItem
-                key={level}
-                onClick={() =>
-                  editor
-                    .chain()
-                    .focus()
-                    .toggleHeading({ level: level as 4 | 5 | 6 })
-                    .run()
-                }
+        <div className="flex items-center">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
+            active={editor.isActive("heading", { level: 4 })}
+            title={HEADING_TITLES[4]}
+          >
+            <Heading4 className="h-4 w-4" />
+          </ToolbarButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-5 rounded-l-none px-0"
+                title="五级、六级标题"
+                aria-label="更多标题级别"
               >
-                {HEADING_TITLES[level]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {[5, 6].map((level) => (
+                <DropdownMenuItem
+                  key={level}
+                  onClick={() =>
+                    editor
+                      .chain()
+                      .focus()
+                      .toggleHeading({ level: level as 5 | 6 })
+                      .run()
+                  }
+                >
+                  {HEADING_TITLES[level]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         <div className="mx-1 h-5 w-px bg-border" />
 
@@ -477,7 +485,13 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           <Quote className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .toggleCodeBlock({ language: "plaintext" })
+              .run()
+          }
           active={editor.isActive("codeBlock")}
           title="代码块"
         >

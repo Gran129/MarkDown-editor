@@ -70,7 +70,7 @@ export function EmbedView({ node }: NodeViewProps) {
 
   if (!target) {
     return (
-      <NodeViewWrapper as="span" className="embed" data-embed="true" data-target="">
+      <NodeViewWrapper as="div" className="embed" data-embed="true" data-target="">
         ![[]]
       </NodeViewWrapper>
     );
@@ -80,7 +80,7 @@ export function EmbedView({ node }: NodeViewProps) {
     const src = toDisplaySrc(resolveNoteMediaFile(notePath, vaultPath, target));
     return (
       <NodeViewWrapper
-        as="span"
+        as="div"
         className="embed embed-image"
         data-embed="true"
         data-target={target}
@@ -94,7 +94,7 @@ export function EmbedView({ node }: NodeViewProps) {
   if (isOffice && officeKind) {
     return (
       <NodeViewWrapper
-        as="span"
+        as="div"
         className="embed embed-office-node"
         data-embed="true"
         data-target={target}
@@ -112,7 +112,7 @@ export function EmbedView({ node }: NodeViewProps) {
 
   return (
     <NodeViewWrapper
-      as="span"
+      as="div"
       className="embed embed-note"
       data-embed="true"
       data-target={target}

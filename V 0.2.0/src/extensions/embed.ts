@@ -23,10 +23,11 @@ function parseEmbedAttrs(element: HTMLElement): { target: string; size: string |
 
 export const Embed = Node.create({
   name: "embed",
-  group: "inline",
-  inline: true,
+  group: "block",
+  inline: false,
   atom: true,
   selectable: true,
+  draggable: true,
 
   addAttributes() {
     return {
@@ -38,6 +39,10 @@ export const Embed = Node.create({
   parseHTML() {
     return [
       {
+        tag: 'div[data-embed="true"]',
+        getAttrs: (element) => parseEmbedAttrs(element as HTMLElement),
+      },
+      {
         tag: 'span[data-embed="true"]',
         getAttrs: (element) => parseEmbedAttrs(element as HTMLElement),
       },
@@ -47,7 +52,7 @@ export const Embed = Node.create({
   renderHTML({ node, HTMLAttributes }) {
     const target = resolveLinkTarget(node.attrs.target);
     return [
-      "span",
+      "div",
       mergeAttributes(HTMLAttributes, {
         "data-embed": "true",
         "data-target": target,
@@ -58,7 +63,7 @@ export const Embed = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(EmbedView, { as: "span" });
+    return ReactNodeViewRenderer(EmbedView, { as: "div" });
   },
 
   addCommands() {

@@ -32,13 +32,17 @@ export const EditorWorkspace = memo(function EditorWorkspace({
 
   return (
     <>
-      {isRich && (
+      <div
+        className={cn(isSource && "pointer-events-none invisible h-0 overflow-hidden")}
+        aria-hidden={isSource}
+      >
         <FrontmatterEditor
+          filePath={activeTab.path}
           frontmatter={activeTab.frontmatter}
           readOnly={viewMode === "reading"}
           onChange={onFrontmatterChange}
         />
-      )}
+      </div>
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {/* Keep TipTap mounted while in source mode to avoid React/TipTap DOM teardown races. */}
         <div
@@ -56,7 +60,8 @@ export const EditorWorkspace = memo(function EditorWorkspace({
             frontmatter={activeTab.frontmatter}
             fontSize={settings.font_size}
             lineHeight={settings.line_height}
-            autoSaveMs={settings.auto_save_ms}
+            autoSaveEnabled={settings.auto_save_enabled}
+            autoSaveMinutes={settings.auto_save_minutes}
             noteNames={noteNames}
             editable={viewMode === "editing"}
             showToolbar={viewMode === "editing"}
@@ -74,12 +79,14 @@ export const EditorWorkspace = memo(function EditorWorkspace({
         >
           <SourceEditor
             key={activeTab.path}
+            active={isSource}
             path={activeTab.path}
             content={activeTab.content}
             frontmatter={activeTab.frontmatter}
             fontSize={settings.font_size}
             lineHeight={settings.line_height}
-            autoSaveMs={settings.auto_save_ms}
+            autoSaveEnabled={settings.auto_save_enabled}
+            autoSaveMinutes={settings.auto_save_minutes}
           />
         </div>
       </div>
