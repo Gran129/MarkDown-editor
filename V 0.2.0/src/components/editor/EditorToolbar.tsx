@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -36,9 +36,11 @@ import {
   AlignJustify,
   ChevronDown,
   Blocks,
+  Palette,
   Upload,
   Globe,
   FileSpreadsheet,
+  ClipboardList,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -52,10 +54,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { generateBlockId } from "@/lib/block-utils";
+import type { QuestionKind } from "@/lib/question";
 import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { MarkColorMenu } from "@/components/editor/MarkColorMenu";
-import { CodeBlockColorMenu, pickLocalImagePath } from "@/components/editor/CodeBlockColorMenu";
+import { pickLocalImagePath } from "@/components/editor/CodeBlockColorMenu";
+import { CODE_LANGUAGES } from "@/components/editor/CodeBlockView";
+import { MARK_COLOR_PRESETS } from "@/extensions/markdown-marks";
 import { copyIntoNoteResources } from "@/lib/tauri-api";
 import { applyToolbarCodeBlock } from "@/lib/code-block-command";
 import { MEDIA_DIALOG_EXTENSIONS } from "@/lib/file-kinds";
@@ -64,6 +69,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -104,6 +111,96 @@ const HEADING_TITLES: Record<number, string> = {
   6: "六级标题（######）",
 };
 
+function CodeToolbarExtras({ editor }: { editor: Editor }) {
+  const isBlock = editor.isActive("codeBlock");
+  const isInline = editor.isActive("code");
+  if (!isBlock && !isInline) return null;
+
+  const blockLang = (editor.getAttributes("codeBlock").language as string | null) || "plaintext";
+  const inlineLang = (editor.getAttributes("code").language as string | null) || "plaintext";
+  const language = isBlock ? blockLang : inlineLang;
+  const isMermaid = isBlock && blockLang === "mermaid";
+  const langs = CODE_LANGUAGES.filter((item) => isBlock || item.id !== "mermaid");
+
+  const setLanguage = (next: string) => {
+    if (isBlock) {
+      editor.chain().focus().updateAttributes("codeBlock", { language: next }).run();
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("code")
+      .setMark("code", { ...editor.getAttributes("code"), language: next })
+      .run();
+  };
+
+  const setColor = (color: string | null) => {
+    if (isBlock) {
+      editor.chain().focus().updateAttributes("codeBlock", { blockColor: color }).run();
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("code")
+      .setMark("code", { ...editor.getAttributes("code"), color })
+      .run();
+  };
+
+  return (
+    <>
+      <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
+      {!isMermaid && (
+        <select
+          className="h-7 max-w-[7.25rem] rounded-md border border-border bg-background px-1 text-[11px]"
+          value={langs.some((item) => item.id === language) ? language : language || "plaintext"}
+          aria-label="代码语言"
+          title="代码语言"
+          onMouseDown={(event) => event.stopPropagation()}
+          onChange={(event) => setLanguage(event.target.value)}
+        >
+          {!langs.some((item) => item.id === language) && language ? (
+            <option value={language}>{language}</option>
+          ) : null}
+          {langs.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      )}
+      <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-7" title="代码颜色">
+            <Palette className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuLabel className="text-xs">
+            {isBlock ? "代码块背景" : "行内代码颜色"}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {MARK_COLOR_PRESETS.map((preset) => (
+            <DropdownMenuItem key={preset.label} onClick={() => setColor(preset.value)}>
+              {preset.value ? (
+                <span
+                  className="mr-2 inline-block h-3 w-3 rounded-sm border border-border"
+                  style={{ backgroundColor: preset.value }}
+                />
+              ) : (
+                <span className="mr-2 inline-block h-3 w-3 rounded-sm border border-dashed border-border" />
+              )}
+              {preset.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
+
 function ToolbarButton({
   onClick,
   active,
@@ -130,6 +227,15 @@ function ToolbarButton({
   );
 }
 
+function ToolbarGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="toolbar-group inline-flex max-w-full shrink-0 flex-wrap items-center gap-x-0.5 gap-y-1">
+      <span className="toolbar-group-label">{label}</span>
+      {children}
+    </div>
+  );
+}
+
 export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolbarProps) {
   const settings = useAppStore((s) => s.settings);
   const saveTab = useAppStore((s) => s.saveTab);
@@ -151,6 +257,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
   const [embedOpen, setEmbedOpen] = useState(false);
   const [embedTarget, setEmbedTarget] = useState("");
   const [calloutOpen, setCalloutOpen] = useState(false);
+  const [blockRefSel, setBlockRefSel] = useState<{ from: number; to: number } | null>(null);
 
   if (!editor) return null;
 
@@ -241,19 +348,47 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
   };
 
   const insertBlockReference = () => {
-    const $from = editor.state.selection.$from;
-    const para = $from.parent;
-    if (para.type.name !== "paragraph") return;
-    const text = para.textContent.trim();
-    if (!text) return;
-    let blockId = (para.attrs.blockId as string | null) ?? "";
-    if (!blockId) {
-      blockId = generateBlockId();
-      const pos = $from.before($from.depth);
-      editor.view.dispatch(
-        editor.state.tr.setNodeMarkup(pos, undefined, { ...para.attrs, blockId }),
-      );
+    const DEFAULT_SYNC_TEXT = "这是一个同步区块，允许用户编辑该区块中的内容。";
+    const sel = blockRefSel ?? {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+    };
+    const selected = editor.state.doc.textBetween(sel.from, sel.to).trim();
+    const $from = editor.state.doc.resolve(sel.from);
+    let para = $from.parent;
+    let paraPos = sel.from;
+    if (para.type.name !== "paragraph") {
+      for (let depth = $from.depth; depth > 0; depth--) {
+        const node = $from.node(depth);
+        if (node.type.name === "paragraph") {
+          para = node;
+          paraPos = $from.before(depth);
+          break;
+        }
+      }
+    } else {
+      paraPos = $from.before($from.depth);
     }
+
+    const text = selected || para.textContent.trim() || DEFAULT_SYNC_TEXT;
+    let blockId = (para.attrs.blockId as string | null) ?? "";
+    if (para.type.name === "paragraph") {
+      if (!para.textContent.trim()) {
+        const tr = editor.state.tr.insertText(DEFAULT_SYNC_TEXT, paraPos + 1);
+        blockId = generateBlockId();
+        tr.setNodeMarkup(paraPos, undefined, { ...para.attrs, blockId });
+        editor.view.dispatch(tr);
+      } else if (!blockId) {
+        blockId = generateBlockId();
+        const pos = paraPos;
+        editor.view.dispatch(
+          editor.state.tr.setNodeMarkup(pos, undefined, { ...para.attrs, blockId }),
+        );
+      }
+    } else {
+      blockId = blockId || generateBlockId();
+    }
+
     editor
       .chain()
       .focus()
@@ -265,6 +400,10 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
       })
       .run();
     setBlockRefOpen(false);
+  };
+
+  const insertQuestion = (kind: QuestionKind) => {
+    editor.chain().focus().insertQuestion(kind).run();
   };
 
   const openImageDialog = () => {
@@ -283,7 +422,8 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
 
   return (
     <>
-      <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center gap-x-0.5 gap-y-1 border-b border-border/80 bg-muted/25 px-2 py-1.5">
+      <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b border-border/80 bg-muted/25 px-2 py-1.5">
+        <ToolbarGroup label="编辑">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           title="撤销 (Ctrl+Z)"
@@ -296,9 +436,24 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         >
           <Redo className="h-4 w-4" />
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => setFindReplaceOpen(true)}
+          title="查找与替换 (Ctrl+H)"
+        >
+          <Search className="h-4 w-4" />
+        </ToolbarButton>
+        {filePath && (
+          <ToolbarButton
+            onClick={() => void saveTab(filePath)}
+            active={isDirty}
+            title="保存到项目文件夹 (Ctrl+S)"
+          >
+            <Save className="h-4 w-4" />
+          </ToolbarButton>
+        )}
+        </ToolbarGroup>
 
-        <div className="mx-1 h-5 w-px bg-border" />
-
+        <ToolbarGroup label="格式">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive("bold")}
@@ -359,9 +514,9 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         >
           <SubscriptIcon className="h-4 w-4" />
         </ToolbarButton>
+        </ToolbarGroup>
 
-        <div className="mx-1 h-5 w-px bg-border" />
-
+        <ToolbarGroup label="标题">
         {[1, 2, 3].map((level) => {
           const Icon = [Heading1, Heading2, Heading3][level - 1]!;
           return (
@@ -420,9 +575,9 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        </ToolbarGroup>
 
-        <div className="mx-1 h-5 w-px bg-border" />
-
+        <ToolbarGroup label="段落">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleFirstLineIndent().run()}
           active={!!editor.getAttributes("paragraph").textIndent}
@@ -484,7 +639,9 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </ToolbarGroup>
 
+        <ToolbarGroup label="列表">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive("bulletList")}
@@ -514,27 +671,32 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           <Quote className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
-          onClick={() =>
-            applyToolbarCodeBlock(editor, {
-              inlineOnSelection: settings.code_inline_on_selection,
-              mergeParagraphs: settings.code_merge_paragraphs,
-            })
-          }
-          active={editor.isActive("codeBlock") || editor.isActive("code")}
-          title="代码块"
-        >
-          <Code className="h-4 w-4" />
-        </ToolbarButton>
-        {editor.isActive("codeBlock") && <CodeBlockColorMenu editor={editor} />}
-        <ToolbarButton
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
           title="分隔线"
         >
           <Minus className="h-4 w-4" />
         </ToolbarButton>
+        </ToolbarGroup>
 
-        <div className="mx-1 h-5 w-px bg-border" />
+        <ToolbarGroup label="代码">
+        <div className="inline-flex shrink-0 items-center">
+          <ToolbarButton
+            onClick={() =>
+              applyToolbarCodeBlock(editor, {
+                inlineOnSelection: settings.code_inline_on_selection,
+                mergeParagraphs: settings.code_merge_paragraphs,
+              })
+            }
+            active={editor.isActive("codeBlock") || editor.isActive("code")}
+            title="代码块"
+          >
+            <Code className="h-4 w-4" />
+          </ToolbarButton>
+          <CodeToolbarExtras editor={editor} />
+        </div>
+        </ToolbarGroup>
 
+        <ToolbarGroup label="插入">
         <ToolbarButton
           onClick={() => {
             setLinkUrl(editor.getAttributes("link").href ?? "");
@@ -579,12 +741,6 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           <ImageIcon className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => setBlockRefOpen(true)}
-          title="引用当前段落为板块（可同步）"
-        >
-          <Blocks className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
           onClick={() =>
             editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
           }
@@ -601,25 +757,44 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         <ToolbarButton onClick={insertMathBlock} title="插入数学公式块">
           <FunctionSquare className="h-4 w-4" />
         </ToolbarButton>
+        </ToolbarGroup>
 
-        <div className="mx-1 h-5 w-px bg-border" />
-
+        <ToolbarGroup label="板块">
         <ToolbarButton
-          onClick={() => setFindReplaceOpen(true)}
-          title="查找与替换 (Ctrl+H)"
+          onClick={() => {
+            setBlockRefSel({
+              from: editor.state.selection.from,
+              to: editor.state.selection.to,
+            });
+            setBlockRefOpen(true);
+          }}
+          title="引用当前段落为同步板块"
         >
-          <Search className="h-4 w-4" />
+          <Blocks className="h-4 w-4" />
         </ToolbarButton>
-
-        {filePath && (
-          <ToolbarButton
-            onClick={() => void saveTab(filePath)}
-            active={isDirty}
-            title="保存到项目文件夹 (Ctrl+S)"
-          >
-            <Save className="h-4 w-4" />
-          </ToolbarButton>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="题目"
+              aria-label="插入题目"
+            >
+              <ClipboardList className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>题目</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => insertQuestion("single")}>单选题</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => insertQuestion("multiple")}>多选题</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => insertQuestion("fill")}>填空题</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => insertQuestion("match")}>连线题</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        </ToolbarGroup>
       </div>
 
       <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
@@ -728,14 +903,29 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         </DialogContent>
       </Dialog>
 
-      <Dialog open={blockRefOpen} onOpenChange={setBlockRefOpen}>
-        <DialogContent className="max-w-sm">
+      <Dialog
+        open={blockRefOpen}
+        onOpenChange={(open) => {
+          setBlockRefOpen(open);
+          if (!open && blockRefSel) {
+            editor.chain().focus().setTextSelection(blockRefSel).run();
+          }
+        }}
+      >
+        <DialogContent
+          className="max-w-sm"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            editor.chain().focus().run();
+            if (blockRefSel) editor.commands.setTextSelection(blockRefSel);
+          }}
+        >
           <DialogHeader>
             <DialogTitle>引用段落板块</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            将当前段落引用为可同步的「板块」。引用后点击板块可在右侧面板查看来源并跳转。
-            请先把光标放在一段有文字的段落上。
+            将当前段落引用为可同步的「板块」。未选中文字时会创建一个带默认说明的空白同步区块。
+            创建后点击板块标题可在右侧面板查看来源并跳转。
           </p>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -746,12 +936,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
             开启同步（源段落修改时自动更新）
           </label>
           <DialogFooter>
-            <Button
-              onClick={insertBlockReference}
-              disabled={!editor.state.selection.$from.parent.textContent.trim()}
-            >
-              插入引用
-            </Button>
+            <Button onClick={insertBlockReference}>插入引用</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -37,6 +37,12 @@ export interface AppSettings {
   default_vault: string | null;
   code_inline_on_selection: boolean;
   code_merge_paragraphs: boolean;
+  /** 嵌入笔记时是否展开正文预览；关闭后仅保留点击直达。 */
+  show_embed_note_content: boolean;
+  /** 启用题目对错判定（需自行导入答案与解析）。 */
+  quiz_enable_grading: boolean;
+  /** 作答后自动显示对错与解析；关闭则显示手动按钮。 */
+  quiz_auto_show_answer: boolean;
 }
 
 export interface TabState {
@@ -55,6 +61,19 @@ export interface TagInfo {
 
 /** 语法视图 = Markdown 源码；阅读视图 = 只读预览；编辑视图 = Word 式所见即所得 */
 export type EditorViewMode = "source" | "reading" | "editing";
+
+export type SavePromptMode = "close-tab" | "switch-vault" | "quit";
+
+export interface SavePromptFile {
+  path: string;
+  title: string;
+}
+
+export interface SavePromptState {
+  mode: SavePromptMode;
+  files: SavePromptFile[];
+  vaultPath?: string;
+}
 
 export type AppEdition = "portable" | "installed";
 

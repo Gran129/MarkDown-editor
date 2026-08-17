@@ -105,27 +105,34 @@ fn parse_release_version(tag: &str) -> Result<Version, String> {
 }
 
 pub fn detect_app_edition() -> AppEdition {
-    #[cfg(debug_assertions)]
-    {
+    if let Ok(forced) = std::env::var("MARKDOWN_EDITOR_EDITION") {
+        match forced.to_ascii_lowercase().as_str() {
+            "portable" | "offline" => return AppEdition::Portable,
+            "installed" | "online" => return AppEdition::Installed,
+            _ => {}
+        }
+    }
+
+    let Ok(exe) = std::env::current_exe() else {
+        return if cfg!(debug_assertions) {
+            AppEdition::Portable
+        } else {
+            AppEdition::Installed
+        };
+    };
+
+    if is_portable_executable(&exe) {
         return AppEdition::Portable;
     }
 
-    #[cfg(not(debug_assertions))]
-    {
-        let Ok(exe) = std::env::current_exe() else {
-            return AppEdition::Portable;
-        };
-
-        if is_portable_executable(&exe) {
-            return AppEdition::Portable;
-        }
-
-        if is_registered_installation(&exe) {
-            return AppEdition::Installed;
-        }
-
-        AppEdition::Portable
+    // Debug `tauri dev` is treated as portable so local runs do not hit GitHub.
+    // Release binaries that are not named/marked portable are the installed
+    // (online-update) edition, even if Uninstall registry lookup fails.
+    if cfg!(debug_assertions) {
+        return AppEdition::Portable;
     }
+
+    AppEdition::Installed
 }
 
 fn is_portable_executable(exe: &Path) -> bool {
@@ -147,6 +154,7 @@ fn is_portable_executable(exe: &Path) -> bool {
     marker.exists()
 }
 
+#[allow(dead_code)]
 #[cfg(target_os = "windows")]
 fn is_registered_installation(exe: &Path) -> bool {
     use winreg::enums::*;
@@ -204,6 +212,7 @@ fn is_registered_installation(exe: &Path) -> bool {
     false
 }
 
+#[allow(dead_code)]
 #[cfg(not(target_os = "windows"))]
 fn is_registered_installation(exe: &Path) -> bool {
     let path = exe.to_string_lossy();

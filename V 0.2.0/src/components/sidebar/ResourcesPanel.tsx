@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { copyIntoNoteResources, listNoteResources, type ResourceFile } from "@/lib/tauri-api";
 import { locateEmbedPreview, resourceIsReferenced } from "@/lib/insert-embed";
+import { beginResourceDrag, endResourceDrag } from "@/lib/resource-drag";
 import { isBinaryOpenable } from "@/lib/file-kinds";
+import { FileTypeIcon } from "@/components/sidebar/FileTypeIcon";
 import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +103,9 @@ export function ResourcesPanel() {
       })
       .then((fn) => {
         unlisten = fn;
+      })
+      .catch(() => {
+        /* dragDropEnabled may be off; HTML5 drop still works */
       });
     return () => unlisten?.();
   }, [markSelfWrite, notePath, refresh]);
@@ -116,6 +121,21 @@ export function ResourcesPanel() {
         await copyIntoNoteResources(notePath, source);
       } catch (error) {
         window.alert(error instanceof Error ? error.message : "导入资源失败");
+      }
+    }
+    await refresh();
+  };
+
+  const importOsFiles = async (fileList: FileList | File[]) => {
+    if (!notePath) return;
+    markSelfWrite(2000);
+    for (const file of Array.from(fileList)) {
+      const source = (file as File & { path?: string }).path;
+      if (!source) continue;
+      try {
+        await copyIntoNoteResources(notePath, source);
+      } catch {
+        /* skip */
       }
     }
     await refresh();
@@ -157,27 +177,16 @@ export function ResourcesPanel() {
         className={cn("flex min-h-0 flex-col", hover && "bg-primary/5")}
         onDragOver={(e) => {
           e.preventDefault();
+          e.stopPropagation();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
           setHover(true);
         }}
         onDragLeave={() => setHover(false)}
         onDrop={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           setHover(false);
-          if (!notePath) return;
-          const dropped = Array.from(e.dataTransfer.files);
-          void (async () => {
-            markSelfWrite(2000);
-            for (const file of dropped) {
-              const source = (file as File & { path?: string }).path;
-              if (!source) continue;
-              try {
-                await copyIntoNoteResources(notePath, source);
-              } catch {
-                /* skip */
-              }
-            }
-            await refresh();
-          })();
+          void importOsFiles(e.dataTransfer.files);
         }}
       >
         <div className="flex items-center justify-between gap-1 px-2 py-1">
@@ -199,13 +208,15 @@ export function ResourcesPanel() {
         </div>
         <ScrollArea className="min-h-0 flex-1">
           {!noteActive ? (
-            <p className="px-3 py-2 text-xs text-muted-foreground">打开 Markdown 笔记后显示其隐藏资源文件夹</p>
+            <p className="px-3 py-2 text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]">
+              打开 Markdown 笔记后显示其隐藏资源文件夹
+            </p>
           ) : files.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted-foreground">
+            <p className="px-3 py-2 text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]">
               拖拽文件到此处，或点击导入。文件会放入该笔记的隐藏 .resources 文件夹。
             </p>
           ) : (
-            <ul className="px-1 pb-2">
+            <ul className="space-y-0.5 px-1 pb-2">
               {files.map((file) => {
                 const referenced = resourceIsReferenced(markdown, file.relative, file.name);
                 return (
@@ -213,19 +224,27 @@ export function ResourcesPanel() {
                     <div
                       draggable
                       onDragStart={(e) => {
+                        e.stopPropagation();
+                        beginResourceDrag(file.relative);
                         e.dataTransfer.setData("text/resource-path", file.relative);
                         e.dataTransfer.setData("text/plain", file.relative);
-                        e.dataTransfer.effectAllowed = "copy";
+                        e.dataTransfer.effectAllowed = "copyMove";
+                        e.dataTransfer.dropEffect = "copy";
                       }}
-                      className="flex cursor-grab items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-accent/70"
+                      onDragEnd={() => endResourceDrag()}
+                      className="flex cursor-grab items-start gap-1.5 rounded-md px-2 py-1 text-xs active:cursor-grabbing hover:bg-accent/70"
                       title="拖到编辑器中插入预览"
                     >
-                      <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                      <FileTypeIcon name={file.name} className="mt-0.5" />
+                      <span className="min-w-0 flex-1 break-words leading-snug [overflow-wrap:anywhere]">
+                        {file.name}
+                      </span>
                       {referenced && (
                         <button
                           type="button"
                           className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
                           title="定位到笔记中的预览"
+                          draggable={false}
                           onClick={() => locateEmbedPreview(file.name)}
                         >
                           <LocateFixed className="h-3.5 w-3.5" />

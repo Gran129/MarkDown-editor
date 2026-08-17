@@ -107,8 +107,8 @@ export function syncParagraphBlocksInMarkdown(editor: Editor, markdown: string):
     if (!line.trim() || line.startsWith("#") || line.startsWith("|") || line.startsWith(">")) {
       return line;
     }
-    if (line.startsWith("```") || line.includes("data-block-ref")) return line;
-    if (line.match(/^⟦block-ref/)) return line;
+    if (line.startsWith("```") || line.includes("data-block-ref") || line.includes("data-question")) return line;
+    if (line.match(/^⟦block-ref/) || line.match(/^⟦question/) || line.match(/^⟦\/question⟧/)) return line;
 
     const para = paragraphs[index];
     index++;
@@ -125,8 +125,11 @@ export function syncParagraphBlocksInMarkdown(editor: Editor, markdown: string):
 
 export function postprocessBlockRefs(md: string): string {
   return md.replace(
-    /<div[^>]*data-block-ref="true"[^>]*data-source-file="([^"]*)"[^>]*data-block-id="([^"]*)"[^>]*data-sync="(true|false)"[^>]*>([\s\S]*?)<\/div>/gi,
-    (_, file: string, blockId: string, sync: string, inner: string) => {
+    /<div[^>]*data-block-ref="true"[^>]*>([\s\S]*?)<\/div>/gi,
+    (full, inner: string) => {
+      const file = full.match(/data-source-file="([^"]*)"/i)?.[1] ?? "";
+      const blockId = full.match(/data-block-id="([^"]*)"/i)?.[1] ?? "";
+      const sync = /data-sync="false"/i.test(full) ? "false" : "true";
       if (sync === "true") {
         return `⟦block-ref file="${file}" id="${blockId}" sync="1"⟧`;
       }

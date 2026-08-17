@@ -218,7 +218,7 @@ export function AppLayout() {
 }
 
 function WelcomeScreen() {
-  const openVault = useAppStore((s) => s.openVault);
+  const openVault = useAppStore((s) => s.requestOpenVault);
   const vaultPath = useAppStore((s) => s.vaultPath);
   const [recent, setRecent] = useState<VaultInfo[]>([]);
 

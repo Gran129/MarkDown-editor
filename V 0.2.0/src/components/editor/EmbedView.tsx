@@ -68,6 +68,7 @@ export function EmbedView({
   const vaultPath = useAppStore((s) => s.vaultPath);
   const notePath = useAppStore((s) => s.activeTabPath);
   const viewMode = useAppStore((s) => s.viewMode);
+  const showEmbedNoteContent = useAppStore((s) => s.settings.show_embed_note_content);
   const isImage = IMAGE_EXT.test(target);
   const officeKind = officeKindFromPath(target);
   const isOffice = isOfficeFileName(target);
@@ -77,7 +78,15 @@ export function EmbedView({
   const [noteMissing, setNoteMissing] = useState(false);
 
   useEffect(() => {
-    if (!target || isImage || isOffice || kind === "pdf" || kind === "xmind" || !vaultPath) {
+    if (
+      !showEmbedNoteContent ||
+      !target ||
+      isImage ||
+      isOffice ||
+      kind === "pdf" ||
+      kind === "xmind" ||
+      !vaultPath
+    ) {
       setNotePreview(null);
       setNoteMissing(false);
       return;
@@ -105,7 +114,7 @@ export function EmbedView({
     return () => {
       cancelled = true;
     };
-  }, [target, isImage, isOffice, kind, vaultPath]);
+  }, [target, isImage, isOffice, kind, vaultPath, showEmbedNoteContent]);
 
   const chrome = target ? (
     <div className="embed-block-chrome" contentEditable={false}>
@@ -252,12 +261,16 @@ export function EmbedView({
       {chrome}
       <span className="embed-note-title">![[{target}]]</span>
       {!collapsed &&
-        (noteMissing ? (
-          <span className="embed-note-missing">未找到该笔记</span>
-        ) : notePreview ? (
-          <span className="embed-note-body">{notePreview}</span>
+        (showEmbedNoteContent ? (
+          noteMissing ? (
+            <span className="embed-note-missing">未找到该笔记</span>
+          ) : notePreview ? (
+            <span className="embed-note-body">{notePreview}</span>
+          ) : (
+            <span className="embed-note-body">加载嵌入内容…</span>
+          )
         ) : (
-          <span className="embed-note-body">加载嵌入内容…</span>
+          <span className="embed-note-hint">点击直达该笔记</span>
         ))}
     </NodeViewWrapper>
   );

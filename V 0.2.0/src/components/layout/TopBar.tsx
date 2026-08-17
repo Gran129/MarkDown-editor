@@ -62,7 +62,7 @@ function ChromeDivider() {
 }
 
 export function TopBar() {
-  const openVault = useAppStore((s) => s.openVault);
+  const openVault = useAppStore((s) => s.requestOpenVault);
   const vaultPath = useAppStore((s) => s.vaultPath);
   const sourceVaultPath = useAppStore((s) => s.sourceVaultPath);
   const theme = useAppStore((s) => s.theme);

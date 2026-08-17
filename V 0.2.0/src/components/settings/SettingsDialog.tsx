@@ -58,16 +58,25 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setSettingsOpen}>
-      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col gap-0 overflow-hidden p-0">
+      <DialogContent
+        className="flex max-h-[85vh] min-h-[28rem] max-w-lg flex-col gap-0 overflow-hidden p-0"
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+        onFocusOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>设置</DialogTitle>
         </DialogHeader>
         <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
-          <TabsList className="mx-6 mt-3 grid w-auto grid-cols-2">
-            <TabsTrigger value="general">常规</TabsTrigger>
-            <TabsTrigger value="editor">编辑</TabsTrigger>
+          <TabsList className="relative z-10 mx-6 mt-3 grid w-auto shrink-0 grid-cols-2">
+            <TabsTrigger value="general" className="min-w-[4.5rem]">常规</TabsTrigger>
+            <TabsTrigger value="editor" className="min-w-[4.5rem]">编辑</TabsTrigger>
           </TabsList>
-          <TabsContent value="general" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <TabsContent
+            value="general"
+            forceMount
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 data-[state=inactive]:hidden"
+          >
           <EditionBadge info={editionInfo} />
           <div>
             <label className="text-sm font-medium">主题</label>
@@ -205,7 +214,7 @@ export function SettingsDialog() {
             </span>
           </label>
           </TabsContent>
-          <TabsContent value="editor" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <TabsContent value="editor" forceMount className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 data-[state=inactive]:hidden">
             <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
               <p className="text-sm font-medium">代码块</p>
               <label className="flex items-start gap-2 text-sm">
@@ -237,6 +246,61 @@ export function SettingsDialog() {
                   多段落合并为一个代码块
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     打开后，选中多个段落再启用代码块，会合并成一个代码块并保留原来的换行，语法高亮仍然可用。
+                  </span>
+                </span>
+              </label>
+            </div>
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">嵌入内容</p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.show_embed_note_content}
+                  onChange={(e) =>
+                    void updateSettings({ show_embed_note_content: e.target.checked })
+                  }
+                />
+                <span>
+                  显示嵌入笔记的内容
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    关闭后，![[笔记]] 只保留点击直达，不展开正文预览。
+                  </span>
+                </span>
+              </label>
+            </div>
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">题目板块</p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.quiz_enable_grading}
+                  onChange={(e) =>
+                    void updateSettings({ quiz_enable_grading: e.target.checked })
+                  }
+                />
+                <span>
+                  启用判断对错功能
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    需在题目框右上角自行导入客观题答案与解析。阅读视图中隐藏导入按钮。
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.quiz_auto_show_answer}
+                  disabled={!settings.quiz_enable_grading}
+                  onChange={(e) =>
+                    void updateSettings({ quiz_auto_show_answer: e.target.checked })
+                  }
+                />
+                <span>
+                  作答后自动显示对错与解析
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    关闭时，答完后在题目框右上角显示「显示答案与解析」按钮。
                   </span>
                 </span>
               </label>

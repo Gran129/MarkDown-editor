@@ -273,7 +273,14 @@
 .tiptap .hljs-class .hljs-title { color: oklch(0.5 0.12 220); }
 .tiptap .hljs-built_in,
 .tiptap .hljs-builtin-name { color: oklch(0.55 0.14 20); }
-.tiptap code { font-family: ui-monospace, monospace; font-size: 0.875em; }
+.tiptap :not(pre) > code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.875em;
+  background: color-mix(in oklch, var(--muted) 82%, var(--foreground) 6%);
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  padding: 0.12em 0.4em;
+}
 .tiptap table {
   border-collapse: collapse;
   width: 100%;
@@ -352,20 +359,14 @@
   padding: 0.5em 0.75em;
   margin: 0.5em 0;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
-  cursor: pointer;
+  cursor: text;
 }
 .block-reference:hover {
   background: color-mix(in oklch, var(--primary) 10%, transparent);
 }
-.block-reference::before {
-  content: "板块引用";
-  display: block;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--muted-foreground);
+.block-reference-label {
+  cursor: pointer;
   margin-bottom: 0.25em;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .tiptap mark,
@@ -696,4 +697,129 @@ div[id^="d"][aria-roledescription="error"] {
   background: var(--primary);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
   cursor: pointer;
+}
+
+.toolbar-group {
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  border-radius: 0.5rem;
+  padding: 0.1rem 0.2rem 0.1rem 0.15rem;
+  background: color-mix(in oklch, var(--background) 55%, transparent);
+}
+.toolbar-group-label {
+  display: inline-block;
+  padding: 0 0.35rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.embed-note-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.question-block {
+  margin: 0.75em 0;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: color-mix(in oklch, var(--muted) 35%, var(--background));
+}
+.question-block.is-selected {
+  outline: 2px solid color-mix(in oklch, var(--primary) 50%, transparent);
+}
+.question-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.question-prompt,
+.question-prompt-input {
+  width: 100%;
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.question-prompt-input {
+  min-height: 4rem;
+  resize: vertical;
+  border: 1px solid var(--input);
+  border-radius: 0.5rem;
+  background: var(--background);
+  padding: 0.4rem 0.6rem;
+}
+.question-image-wrap {
+  position: relative;
+  margin: 0.4rem 0 0.6rem;
+}
+.question-image {
+  max-height: 220px;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  object-fit: contain;
+}
+.question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.question-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.question-option-edit,
+.question-blank {
+  flex: 1;
+  border: 1px solid var(--input);
+  border-radius: 0.4rem;
+  background: var(--background);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.9rem;
+}
+.question-blank {
+  display: inline-block;
+  width: 7rem;
+  margin: 0 0.25rem;
+}
+.question-match {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.question-match-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.question-match-item {
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--background);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+}
+.question-match-item.is-pending {
+  border-color: var(--primary);
+}
+.question-match-item.is-paired {
+  background: color-mix(in oklch, var(--primary) 10%, var(--background));
+}
+.question-result {
+  margin-top: 0.6rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.65rem;
+}
+.question-result.is-correct {
+  background: color-mix(in oklch, #22c55e 18%, var(--background));
+}
+.question-result.is-wrong {
+  background: color-mix(in oklch, #ef4444 16%, var(--background));
 }

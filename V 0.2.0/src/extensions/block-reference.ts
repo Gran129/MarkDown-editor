@@ -1,4 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
+
+import { BlockReferenceView } from "@/components/editor/BlockReferenceView";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -17,7 +20,7 @@ declare module "@tiptap/core" {
 export const BlockReference = Node.create({
   name: "blockReference",
   group: "block",
-  content: "block+",
+  content: "paragraph+",
   defining: true,
   isolating: true,
 
@@ -58,6 +61,10 @@ export const BlockReference = Node.create({
       }),
       0,
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(BlockReferenceView, { as: "div" });
   },
 
   addCommands() {

@@ -1,18 +1,21 @@
 import type { EditorView } from "@tiptap/pm/view";
 
+import { getResourceDrag, isResourceDragEvent } from "@/lib/resource-drag";
+
 export function isResourceDrag(event: DragEvent): boolean {
-  const types = Array.from(event.dataTransfer?.types ?? []);
-  if (types.includes("text/resource-path")) return true;
-  const plain = event.dataTransfer?.getData("text/plain") ?? "";
-  return plain.includes(".resources/");
+  return Boolean(getResourceDrag()) || isResourceDragEvent(event);
 }
 
 export function resourcePathFromEvent(event: DragEvent): string {
+  const active = getResourceDrag();
+  if (active) return active;
   const typed = event.dataTransfer?.getData("text/resource-path")?.trim() ?? "";
   if (typed.includes(".resources/")) return typed;
   const plain = event.dataTransfer?.getData("text/plain")?.trim() ?? "";
   return plain.includes(".resources/") ? plain : "";
 }
+
+let lastInsert = { at: 0, target: "" };
 
 /** Insert a block embed, splitting the paragraph when the caret is mid-block. */
 export function insertEmbedAtPoint(
@@ -21,6 +24,11 @@ export function insertEmbedAtPoint(
   clientY: number,
   target: string,
 ): boolean {
+  const now = Date.now();
+  if (lastInsert.target === target && now - lastInsert.at < 120) {
+    return true;
+  }
+
   const coords = view.posAtCoords({ left: clientX, top: clientY });
   if (!coords) return false;
   const embedType = view.state.schema.nodes.embed;
@@ -47,6 +55,8 @@ export function insertEmbedAtPoint(
 
   tr = tr.insert(insertPos, node);
   view.dispatch(tr.scrollIntoView());
+  lastInsert.at = now;
+  lastInsert.target = target;
   return true;
 }
 
