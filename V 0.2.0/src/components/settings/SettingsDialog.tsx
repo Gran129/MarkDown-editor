@@ -10,15 +10,43 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppStore } from "@/stores/app-store";
-import { getAppEditionInfo } from "@/lib/tauri-api";
+import { getAppEditionInfo, checkForUpdates } from "@/lib/tauri-api";
 import type { AppEditionInfo } from "@/lib/types";
+import { SHOW_UPDATE_EVENT } from "@/components/update/UpdateChecker";
 
 function EditionBadge({ info }: { info: AppEditionInfo | null }) {
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState("");
+
   if (!info) return null;
 
   const editionLabel =
     info.edition === "portable" ? "便携版本地版" : "安装包联网版";
   const networkLabel = info.networkOnline ? "在线" : "离线";
+
+  const handleManualCheck = async () => {
+    setChecking(true);
+    setCheckMsg("");
+    try {
+      const result = await checkForUpdates();
+      if (result.status === "update_available") {
+        window.dispatchEvent(new CustomEvent(SHOW_UPDATE_EVENT, { detail: result }));
+        setCheckMsg(`发现新版本 ${result.latestVersion ?? ""}`.trim());
+      } else if (result.status === "up_to_date") {
+        setCheckMsg("已是最新版本");
+      } else if (result.status === "skipped_offline") {
+        setCheckMsg("当前离线，无法检查更新");
+      } else if (result.status === "skipped_portable") {
+        setCheckMsg("便携版不检测更新");
+      } else {
+        setCheckMsg(result.error || "检查更新失败");
+      }
+    } catch (error) {
+      setCheckMsg(error instanceof Error ? error.message : "检查更新失败");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   return (
     <div className="rounded-lg border border-border/80 bg-muted/40 p-3 text-sm">
@@ -34,6 +62,20 @@ function EditionBadge({ info }: { info: AppEditionInfo | null }) {
             ? "安装版将在联网时自动检查 GitHub 更新。"
             : "当前离线，已跳过更新检测；下次联网启动时将重新检查。"}
       </div>
+      {info.edition === "installed" && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={checking}
+            onClick={() => void handleManualCheck()}
+          >
+            {checking ? "正在检查…" : "手动检查更新"}
+          </Button>
+          {checkMsg ? <span className="text-xs text-muted-foreground">{checkMsg}</span> : null}
+        </div>
+      )}
     </div>
   );
 }

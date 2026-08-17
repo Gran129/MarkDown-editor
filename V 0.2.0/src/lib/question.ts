@@ -1,8 +1,18 @@
 export type QuestionKind = "single" | "multiple" | "fill" | "match";
 
+export const BLANK_TOKEN = "___";
+export const BLANK_DISPLAY = "〔空〕";
+
+export interface QuestionMedia {
+  id: string;
+  src: string;
+  width: number;
+}
+
 export interface QuestionOption {
   id: string;
   text: string;
+  images: QuestionMedia[];
 }
 
 export interface QuestionMatchItem {
@@ -14,14 +24,14 @@ export interface QuestionData {
   id: string;
   kind: QuestionKind;
   prompt: string;
-  image: string | null;
+  promptImages: QuestionMedia[];
   options: QuestionOption[];
-  blanks: string[];
   left: QuestionMatchItem[];
   right: QuestionMatchItem[];
   /** Official key: single = option id; multiple = comma ids; fill = JSON string[]; match = JSON Record. */
   answer: string;
   explanation: string;
+  collapsed: boolean;
 }
 
 export const QUESTION_KIND_LABEL: Record<QuestionKind, string> = {
@@ -35,10 +45,19 @@ export function generateQuestionId(): string {
   return `q_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
 }
 
-function letters(count: number): QuestionOption[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: String.fromCharCode(97 + i),
+export function generateMediaId(): string {
+  return `img_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+}
+
+function letterId(index: number): string {
+  return String.fromCharCode(97 + index);
+}
+
+function defaultOptions(): QuestionOption[] {
+  return Array.from({ length: 4 }, (_, i) => ({
+    id: letterId(i),
     text: `选项 ${String.fromCharCode(65 + i)}`,
+    images: [],
   }));
 }
 
@@ -48,14 +67,14 @@ export function createQuestion(kind: QuestionKind): QuestionData {
     return {
       id,
       kind,
-      prompt: "请在空白处填入答案：___",
-      image: null,
+      prompt: `请在空白处填入答案：${BLANK_TOKEN}`,
+      promptImages: [],
       options: [],
-      blanks: [""],
       left: [],
       right: [],
       answer: "",
       explanation: "",
+      collapsed: false,
     };
   }
   if (kind === "match") {
@@ -63,9 +82,8 @@ export function createQuestion(kind: QuestionKind): QuestionData {
       id,
       kind,
       prompt: "请将左侧与右侧正确配对。",
-      image: null,
+      promptImages: [],
       options: [],
-      blanks: [],
       left: [
         { id: "l1", text: "左侧 1" },
         { id: "l2", text: "左侧 2" },
@@ -78,43 +96,96 @@ export function createQuestion(kind: QuestionKind): QuestionData {
       ],
       answer: "",
       explanation: "",
+      collapsed: false,
     };
   }
   return {
     id,
     kind,
     prompt: kind === "multiple" ? "请选择所有正确答案。" : "请选择正确答案。",
-    image: null,
-    options: letters(4),
-    blanks: [],
+    promptImages: [],
+    options: defaultOptions(),
     left: [],
     right: [],
     answer: "",
     explanation: "",
+    collapsed: false,
   };
+}
+
+function asMediaList(raw: unknown): QuestionMedia[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const rec = item as Record<string, unknown>;
+      const src = typeof rec.src === "string" ? rec.src : "";
+      if (!src) return null;
+      const width = Number(rec.width);
+      return {
+        id: typeof rec.id === "string" && rec.id ? rec.id : generateMediaId(),
+        src,
+        width: Number.isFinite(width) ? Math.min(100, Math.max(20, width)) : 80,
+      };
+    })
+    .filter((item): item is QuestionMedia => Boolean(item));
+}
+
+function asOptions(raw: unknown): QuestionOption[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item, index) => {
+    if (typeof item === "string") {
+      return { id: letterId(index), text: item, images: [] };
+    }
+    const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+    return {
+      id: typeof rec.id === "string" && rec.id ? rec.id : letterId(index),
+      text: typeof rec.text === "string" ? rec.text : `选项 ${String.fromCharCode(65 + index)}`,
+      images: asMediaList(rec.images),
+    };
+  });
+}
+
+function asMatchItems(raw: unknown, prefix: string): QuestionMatchItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item, index) => {
+    if (typeof item === "string") return { id: `${prefix}${index + 1}`, text: item };
+    const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+    return {
+      id: typeof rec.id === "string" && rec.id ? rec.id : `${prefix}${index + 1}`,
+      text: typeof rec.text === "string" ? rec.text : `${prefix} ${index + 1}`,
+    };
+  });
 }
 
 export function parseQuestionPayload(raw: string): QuestionData | null {
   try {
-    const parsed = JSON.parse(raw) as Partial<QuestionData>;
+    const parsed = JSON.parse(raw) as Partial<QuestionData> & { image?: string | null };
     if (!parsed || typeof parsed !== "object") return null;
     const kind = parsed.kind;
     if (kind !== "single" && kind !== "multiple" && kind !== "fill" && kind !== "match") {
       return null;
     }
+    const created = createQuestion(kind);
+    const legacyImage =
+      typeof parsed.image === "string" && parsed.image
+        ? [{ id: generateMediaId(), src: parsed.image, width: 80 }]
+        : [];
     return {
-      ...createQuestion(kind),
+      ...created,
       ...parsed,
       kind,
-      id: typeof parsed.id === "string" && parsed.id ? parsed.id : generateQuestionId(),
-      prompt: typeof parsed.prompt === "string" ? parsed.prompt : "",
-      image: typeof parsed.image === "string" && parsed.image ? parsed.image : null,
-      options: Array.isArray(parsed.options) ? parsed.options : [],
-      blanks: Array.isArray(parsed.blanks) ? parsed.blanks : [],
-      left: Array.isArray(parsed.left) ? parsed.left : [],
-      right: Array.isArray(parsed.right) ? parsed.right : [],
+      id: typeof parsed.id === "string" && parsed.id ? parsed.id : created.id,
+      prompt: typeof parsed.prompt === "string" ? parsed.prompt : created.prompt,
+      promptImages: asMediaList(parsed.promptImages).length
+        ? asMediaList(parsed.promptImages)
+        : legacyImage,
+      options: asOptions(parsed.options),
+      left: asMatchItems(parsed.left, "l"),
+      right: asMatchItems(parsed.right, "r"),
       answer: typeof parsed.answer === "string" ? parsed.answer : "",
       explanation: typeof parsed.explanation === "string" ? parsed.explanation : "",
+      collapsed: Boolean(parsed.collapsed),
     };
   } catch {
     return null;
@@ -133,55 +204,240 @@ export function decodeQuestionPayload(encoded: string): QuestionData | null {
   }
 }
 
-export function serializeQuestionMarkdown(data: QuestionData): string {
-  return `⟦question kind="${data.kind}" id="${data.id}"⟧\n${JSON.stringify(data)}\n⟦/question⟧`;
+export function countBlanks(prompt: string): number {
+  return prompt.split(BLANK_TOKEN).length - 1;
 }
 
-const QUESTION_START_RE = /^⟦question\s+kind="(single|multiple|fill|match)"\s+id="([^"]+)"⟧$/;
-const QUESTION_END_RE = /^⟦\/question⟧$/;
+export function insertBlankToken(prompt: string, cursor: number): { prompt: string; cursor: number } {
+  const next = `${prompt.slice(0, cursor)}${BLANK_TOKEN}${prompt.slice(cursor)}`;
+  return { prompt: next, cursor: cursor + BLANK_TOKEN.length };
+}
+
+function escapeFence(value: string): string {
+  return value.replace(/\n/g, " ").trim();
+}
+
+function mediaLines(images: QuestionMedia[], indent = ""): string[] {
+  return images.map((img) => `${indent}图：${img.src} | ${Math.round(img.width)}%`);
+}
+
+export function serializeQuestionMarkdown(data: QuestionData): string {
+  const lines: string[] = [
+    `:::question ${data.kind}${data.collapsed ? " collapsed" : ""}`,
+  ];
+  lines.push(`题干：${data.prompt.replaceAll(BLANK_TOKEN, BLANK_DISPLAY)}`);
+  lines.push(...mediaLines(data.promptImages));
+
+  if (data.kind === "single" || data.kind === "multiple") {
+    const official = parseOfficialAnswer(data).optionIds;
+    for (const option of data.options) {
+      const mark = official.includes(option.id) ? "x" : " ";
+      lines.push(`- [${mark}] ${escapeFence(option.text)}`);
+      lines.push(...mediaLines(option.images, "  "));
+    }
+  }
+
+  if (data.kind === "fill") {
+    const blanks = parseOfficialAnswer(data).blanks;
+    if (blanks.some((item) => item.trim())) {
+      lines.push(`答案：${blanks.join(" ｜ ")}`);
+    }
+  }
+
+  if (data.kind === "match") {
+    lines.push("左：");
+    for (const item of data.left) lines.push(`- ${escapeFence(item.text)}`);
+    lines.push("右：");
+    for (const item of data.right) lines.push(`- ${escapeFence(item.text)}`);
+    const pairs = parseOfficialAnswer(data).matches;
+    const pairLines = Object.entries(pairs)
+      .map(([leftId, rightId]) => {
+        const left = data.left.find((item) => item.id === leftId)?.text;
+        const right = data.right.find((item) => item.id === rightId)?.text;
+        if (!left || !right) return "";
+        return `- ${left} = ${right}`;
+      })
+      .filter(Boolean);
+    if (pairLines.length) {
+      lines.push("答案：");
+      lines.push(...pairLines);
+    }
+  }
+
+  if (data.explanation.trim()) {
+    lines.push(`解析：${data.explanation.replaceAll("\n", " / ")}`);
+  }
+  lines.push(":::");
+  return lines.join("\n");
+}
+
+const OLD_JSON_START_RE = /^⟦question\s+kind="(single|multiple|fill|match)"\s+id="([^"]+)"⟧$/;
+const OLD_JSON_END_RE = /^⟦\/question⟧$/;
+const FENCE_START_RE = /^:::question\s+(single|multiple|fill|match)(?:\s+(collapsed))?\s*$/;
+
+function parseMediaLine(line: string): QuestionMedia | null {
+  const match = line.match(/^\s*图：(.+?)(?:\s*\|\s*(\d+)\s*%?)?\s*$/);
+  if (!match) return null;
+  const width = Number(match[2] ?? 80);
+  return {
+    id: generateMediaId(),
+    src: match[1]!.trim(),
+    width: Number.isFinite(width) ? Math.min(100, Math.max(20, width)) : 80,
+  };
+}
+
+function parseReadableQuestion(kind: QuestionKind, body: string[]): QuestionData {
+  const data = createQuestion(kind);
+  if (kind === "single" || kind === "multiple") data.options = [];
+  if (kind === "match") {
+    data.left = [];
+    data.right = [];
+  }
+  let section: "body" | "left" | "right" | "answers" = "body";
+  const answerLines: string[] = [];
+  let lastOption: QuestionOption | null = null;
+
+  for (const raw of body) {
+    const line = raw.trimEnd();
+    const media = parseMediaLine(line);
+    if (media) {
+      if (lastOption) lastOption.images.push(media);
+      else data.promptImages.push(media);
+      continue;
+    }
+    if (/^左：/.test(line.trim())) {
+      section = "left";
+      lastOption = null;
+      continue;
+    }
+    if (/^右：/.test(line.trim())) {
+      section = "right";
+      lastOption = null;
+      continue;
+    }
+    if (/^答案：/.test(line.trim())) {
+      const rest = line.replace(/^答案：/, "").trim();
+      section = "answers";
+      lastOption = null;
+      if (rest) answerLines.push(rest);
+      continue;
+    }
+    if (/^解析：/.test(line.trim())) {
+      data.explanation = line.replace(/^解析：/, "").trim().replaceAll(" / ", "\n");
+      lastOption = null;
+      continue;
+    }
+    if (/^题干：/.test(line.trim())) {
+      data.prompt = line.replace(/^题干：/, "").replaceAll(BLANK_DISPLAY, BLANK_TOKEN);
+      lastOption = null;
+      continue;
+    }
+    const option = line.match(/^- \[([ xX])\]\s*(.*)$/);
+    if (option && (kind === "single" || kind === "multiple")) {
+      const item: QuestionOption = {
+        id: letterId(data.options.length),
+        text: option[2] ?? "",
+        images: [],
+      };
+      data.options.push(item);
+      lastOption = item;
+      if (option[1] !== " ") {
+        const ids = data.answer ? data.answer.split(",") : [];
+        ids.push(item.id);
+        data.answer = kind === "single" ? item.id : ids.join(",");
+      }
+      continue;
+    }
+    const bullet = line.match(/^- (.+)$/);
+    if (bullet && kind === "match") {
+      if (section === "left") data.left.push({ id: `l${data.left.length + 1}`, text: bullet[1]! });
+      else if (section === "right") data.right.push({ id: `r${data.right.length + 1}`, text: bullet[1]! });
+      else if (section === "answers") answerLines.push(bullet[1]!);
+      lastOption = null;
+      continue;
+    }
+  }
+
+  if (kind === "fill" && answerLines.length) {
+    data.answer = JSON.stringify(
+      answerLines
+        .join("｜")
+        .split(/｜|\|/)
+        .map((item) => item.trim()),
+    );
+  }
+  if (kind === "match" && answerLines.length) {
+    const matches: Record<string, string> = {};
+    for (const line of answerLines) {
+      const [leftText, rightText] = line.split("=").map((part) => part.trim());
+      if (!leftText || !rightText) continue;
+      const left = data.left.find((item) => item.text === leftText);
+      const right = data.right.find((item) => item.text === rightText);
+      if (left && right) matches[left.id] = right.id;
+    }
+    data.answer = JSON.stringify(matches);
+  }
+  if ((kind === "single" || kind === "multiple") && data.options.length === 0) {
+    data.options = defaultOptions();
+  }
+  return data;
+}
+
+function questionToHtml(data: QuestionData): string {
+  const payload = encodeQuestionPayload(data);
+  return `<div data-question="true" data-kind="${data.kind}" data-id="${data.id}" data-payload="${payload}" class="question-block"></div>`;
+}
 
 export function preprocessQuestions(md: string): string {
   const lines = md.split("\n");
   const out: string[] = [];
   let i = 0;
   while (i < lines.length) {
-    const match = lines[i]!.match(QUESTION_START_RE);
-    if (!match) {
-      out.push(lines[i]!);
+    const fence = lines[i]!.match(FENCE_START_RE);
+    if (fence) {
+      const kind = fence[1] as QuestionKind;
+      const collapsed = fence[2] === "collapsed";
+      const body: string[] = [];
       i++;
+      while (i < lines.length && lines[i]!.trim() !== ":::") {
+        body.push(lines[i]!);
+        i++;
+      }
+      if (i < lines.length) i++;
+      out.push(questionToHtml({ ...parseReadableQuestion(kind, body), collapsed }));
       continue;
     }
-    const kind = match[1] as QuestionKind;
-    const id = match[2]!;
-    const body: string[] = [];
-    i++;
-    while (i < lines.length && !QUESTION_END_RE.test(lines[i]!)) {
-      body.push(lines[i]!);
+    const old = lines[i]!.match(OLD_JSON_START_RE);
+    if (old) {
+      const kind = old[1] as QuestionKind;
+      const id = old[2]!;
+      const body: string[] = [];
       i++;
+      while (i < lines.length && !OLD_JSON_END_RE.test(lines[i]!)) {
+        body.push(lines[i]!);
+        i++;
+      }
+      if (i < lines.length) i++;
+      const parsed = parseQuestionPayload(body.join("\n")) ?? { ...createQuestion(kind), id };
+      out.push(questionToHtml({ ...parsed, id, kind }));
+      continue;
     }
-    if (i < lines.length) i++;
-    const parsed = parseQuestionPayload(body.join("\n")) ?? { ...createQuestion(kind), id };
-    const payload = encodeQuestionPayload({ ...parsed, id, kind });
-    out.push(
-      `<div data-question="true" data-kind="${kind}" data-id="${id}" data-payload="${payload}" class="question-block"></div>`,
-    );
+    out.push(lines[i]!);
+    i++;
   }
   return out.join("\n");
 }
 
 export function postprocessQuestions(md: string): string {
-  return md.replace(
-    /<div[^>]*data-question="true"[^>]*>[\s\S]*?<\/div>/gi,
-    (full) => {
-      const kind = (full.match(/data-kind="([^"]*)"/i)?.[1] ?? "single") as QuestionKind;
-      const id = full.match(/data-id="([^"]*)"/i)?.[1] ?? generateQuestionId();
-      const encoded = full.match(/data-payload="([^"]*)"/i)?.[1] ?? "";
-      const data =
-        decodeQuestionPayload(encoded) ??
-        parseQuestionPayload(encoded) ?? { ...createQuestion(kind), id, kind };
-      return serializeQuestionMarkdown({ ...data, id, kind });
-    },
-  );
+  return md.replace(/<div[^>]*data-question="true"[^>]*>[\s\S]*?<\/div>/gi, (full) => {
+    const kind = (full.match(/data-kind="([^"]*)"/i)?.[1] ?? "single") as QuestionKind;
+    const id = full.match(/data-id="([^"]*)"/i)?.[1] ?? generateQuestionId();
+    const encoded = full.match(/data-payload="([^"]*)"/i)?.[1] ?? "";
+    const data =
+      decodeQuestionPayload(encoded) ??
+      parseQuestionPayload(encoded) ?? { ...createQuestion(kind), id, kind };
+    return serializeQuestionMarkdown({ ...data, id, kind });
+  });
 }
 
 export function gradeQuestion(
@@ -277,4 +533,9 @@ export function encodeOfficialAnswer(
   if (kind === "multiple") return optionIds.join(",");
   if (kind === "fill") return JSON.stringify(blanks);
   return JSON.stringify(matches);
+}
+
+export function questionReferencesFile(data: QuestionData, fileName: string): boolean {
+  const hay = JSON.stringify(data);
+  return hay.includes(fileName);
 }

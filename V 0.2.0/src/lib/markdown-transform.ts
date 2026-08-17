@@ -237,7 +237,15 @@ export function extractHeadings(
   content: string,
 ): { level: number; text: string; id: string }[] {
   const headings: { level: number; text: string; id: string }[] = [];
+  let inFence = false;
+  let inQuestion = false;
   for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!inFence && /^:::question\b/.test(trimmed)) inQuestion = true;
+    if (/^```/.test(trimmed)) inFence = !inFence;
+    const skip = inFence || inQuestion;
+    if (inQuestion && trimmed === ":::") inQuestion = false;
+    if (skip) continue;
     const m = line.match(/^(#{1,6})\s+(.+)$/);
     if (m) {
       const text = m[2]!.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, "$1").trim();

@@ -1,4 +1,4 @@
-MarkDown 编辑器 v0.2.9 — Windows 安装说明
+MarkDown 编辑器 v0.2.10 — Windows 安装说明
 ========================================
 
 系统要求
@@ -6,13 +6,13 @@ MarkDown 编辑器 v0.2.9 — Windows 安装说明
   - Microsoft Edge WebView2 运行时（Win10/11 通常已自带；安装包会在缺失时自动引导安装）
 
 安装包联网版
-  文件：MarkDown-editor_0.2.9_x64-setup.exe
+  文件：MarkDown-editor_0.2.10_x64-setup.exe
   用法：双击运行安装向导，可安装到当前用户或所有用户。
   安装后可从开始菜单启动「MarkDown 编辑器」。
-  联网时会检查 GitHub 更新；离线时自动跳过。
+  联网时会检查 GitHub 更新；离线时自动跳过。设置中可手动检查更新。
 
 便携版本地版
-  文件：MarkDown-editor_0.2.9_portable.exe
+  文件：MarkDown-editor_0.2.10_portable.exe
   用法：复制到任意文件夹后双击运行，无需安装。
   同目录下的 MarkDown-editor.portable 用于标明便携版（文件名含 portable 时也会识别）。
   便携版不检测更新，可完全离线使用。

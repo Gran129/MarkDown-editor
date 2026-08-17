@@ -9,6 +9,8 @@ import {
 } from "@/lib/tauri-api";
 import type { DownloadProgress, UpdateCheckResult } from "@/lib/types";
 
+export const SHOW_UPDATE_EVENT = "markdown-editor:show-update";
+
 export function UpdateChecker() {
   const [open, setOpen] = useState(false);
   const [info, setInfo] = useState<UpdateCheckResult | null>(null);
@@ -29,6 +31,17 @@ export function UpdateChecker() {
       void getUpdateDownloadProgress().then(setProgress);
     }, 500);
   }, [stopPolling]);
+
+  useEffect(() => {
+    const onShow = (event: Event) => {
+      const result = (event as CustomEvent<UpdateCheckResult>).detail;
+      if (!result || result.status !== "update_available") return;
+      setInfo(result);
+      setOpen(true);
+    };
+    window.addEventListener(SHOW_UPDATE_EVENT, onShow);
+    return () => window.removeEventListener(SHOW_UPDATE_EVENT, onShow);
+  }, []);
 
   useEffect(() => {
     void (async () => {

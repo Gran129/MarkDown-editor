@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { Editor } from "@tiptap/react";
+import { findSourceHeadingOffset, scrollTextareaToOffset } from "@/lib/source-outline";
 
 
 
@@ -150,16 +151,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { editor, editorScrollEl, sourceScrollEl } = get();
 
     if (sourceScrollEl) {
-      const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const headingRe = new RegExp(`^#{1,6}[ \\t]+${escaped}[ \\t]*$`, "m");
-      const match = headingRe.exec(sourceScrollEl.value);
-      if (!match || match.index < 0) return;
-      const lineHeightPx =
-        Number.parseFloat(window.getComputedStyle(sourceScrollEl).lineHeight) || 24;
-      const lineIndex = sourceScrollEl.value.slice(0, match.index).split("\n").length - 1;
+      const offset = findSourceHeadingOffset(sourceScrollEl.value, text);
+      if (offset == null) return;
+      const matchLen = sourceScrollEl.value.slice(offset).split("\n")[0]?.length ?? 0;
       sourceScrollEl.focus();
-      sourceScrollEl.setSelectionRange(match.index, match.index + match[0].length);
-      sourceScrollEl.scrollTop = Math.max(0, lineIndex * lineHeightPx - 48);
+      sourceScrollEl.setSelectionRange(offset, offset + matchLen);
+      scrollTextareaToOffset(sourceScrollEl, offset);
       return;
     }
 
