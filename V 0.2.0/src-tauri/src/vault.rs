@@ -187,24 +187,72 @@ pub fn extract_tags(content: &str) -> Vec<String> {
         .collect()
 }
 
+fn normalize_note_key(value: &str) -> String {
+    let trimmed = value.trim().trim_matches('"').replace('\\', "/");
+    let stripped = strip_note_extension(&trimmed);
+    stripped
+        .rsplit('/')
+        .next()
+        .unwrap_or(&stripped)
+        .to_lowercase()
+}
+
 pub fn get_backlinks_from_vault(vault_path: &str, note_name: &str) -> Vec<BacklinkResult> {
-    let target = note_name.to_lowercase();
-    let link_re = Regex::new(r"\[\[([^\]|]+)").unwrap();
-    let mut results = Vec::new();
+    let mut aliases = vec![normalize_note_key(note_name)];
+    let mut current_paths: Vec<String> = Vec::new();
 
     for path in collect_md_files(vault_path) {
         let content = crate::mde::read_note_markdown(&path).unwrap_or_default();
+        let stem = path
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let title = extract_title(&content, &path);
+        if normalize_note_key(&stem) == aliases[0] || normalize_note_key(&title) == aliases[0] {
+            current_paths.push(path.to_string_lossy().to_string());
+            let stem_key = normalize_note_key(&stem);
+            let title_key = normalize_note_key(&title);
+            if !aliases.contains(&stem_key) {
+                aliases.push(stem_key);
+            }
+            if !aliases.contains(&title_key) {
+                aliases.push(title_key);
+            }
+        }
+    }
+
+    let wiki_re = Regex::new(r"\[\[([^\]|]+)").unwrap();
+    let html_re = Regex::new(r#"data-wiki-link="true"[^>]*data-target="([^"]+)""#).unwrap();
+    let html_re_alt = Regex::new(r#"data-target="([^"]+)"[^>]*data-wiki-link="true""#).unwrap();
+    let mut results = Vec::new();
+
+    for path in collect_md_files(vault_path) {
+        let path_str = path.to_string_lossy().to_string();
+        if current_paths.iter().any(|p| p == &path_str) {
+            continue;
+        }
+        let content = crate::mde::read_note_markdown(&path).unwrap_or_default();
         let body = strip_frontmatter(&content);
         for (line_num, line) in body.lines().enumerate() {
-            for cap in link_re.captures_iter(line) {
+            let mut hits: Vec<String> = Vec::new();
+            for cap in wiki_re.captures_iter(line) {
                 if let Some(m) = cap.get(1) {
-                    if m.as_str().trim().to_lowercase() == target {
-                        results.push(BacklinkResult {
-                            source_path: path.to_string_lossy().to_string(),
-                            source_title: extract_title(&content, &path),
-                            context: format!("L{}: {}", line_num + 1, line.trim()),
-                        });
-                    }
+                    hits.push(m.as_str().to_string());
+                }
+            }
+            for cap in html_re.captures_iter(line).chain(html_re_alt.captures_iter(line)) {
+                if let Some(m) = cap.get(1) {
+                    hits.push(m.as_str().to_string());
+                }
+            }
+            for raw in hits {
+                if aliases.iter().any(|alias| *alias == normalize_note_key(&raw)) {
+                    results.push(BacklinkResult {
+                        source_path: path_str.clone(),
+                        source_title: extract_title(&content, &path),
+                        context: format!("L{}: {}", line_num + 1, line.trim()),
+                    });
+                    break;
                 }
             }
         }

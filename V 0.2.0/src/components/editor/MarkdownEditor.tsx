@@ -348,12 +348,19 @@ export function MarkdownEditor({
         if (blockSyncTimer.current) clearTimeout(blockSyncTimer.current);
         blockSyncTimer.current = setTimeout(() => {
           const $from = ed.state.selection.$from;
-          if ($from.parent.type.name === "paragraph" && $from.parent.attrs.blockId) {
-            refreshSameFileBlockReferences(
-              ed,
-              $from.parent.attrs.blockId as string,
-              $from.parent.textContent,
-            );
+          let syncId: string | null =
+            $from.parent.type.name === "paragraph"
+              ? (($from.parent.attrs.blockId as string | null) ?? null)
+              : null;
+          for (let d = $from.depth; d > 0; d--) {
+            const node = $from.node(d);
+            if (node.type.name === "blockReference") {
+              syncId = String(node.attrs.blockId ?? "") || syncId;
+              break;
+            }
+          }
+          if (syncId) {
+            refreshSameFileBlockReferences(ed, syncId, $from.parent.textContent);
           }
           void refreshSyncedBlockReferences(ed, pathRef.current, (p) =>
             tabsRef.current.find((t) => t.path === p)?.content,

@@ -66,6 +66,21 @@ export function stripBlockComment(line: string): { text: string; meta: Partial<P
 
 /** 从 Markdown 正文中按 blockId 提取段落纯文本 */
 export function extractBlockTextFromMarkdown(md: string, blockId: string): string | null {
+  const startRe = new RegExp(
+    `^⟦block-ref\\s+file="[^"]*"\\s+id="${blockId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`,
+  );
+  const lines = md.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (!startRe.test(lines[i]!.trim())) continue;
+    const body: string[] = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      if (/^⟦\/block-ref⟧$/.test(lines[j]!.trim())) break;
+      if (/^⟦block-ref\b/.test(lines[j]!.trim())) break;
+      body.push(lines[j]!);
+    }
+    const text = body.join("\n").trim();
+    if (text) return text;
+  }
   for (const line of md.split("\n")) {
     const { text, meta } = stripBlockComment(line);
     if (meta.blockId === blockId && text.trim()) {

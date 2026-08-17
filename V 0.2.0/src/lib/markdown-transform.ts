@@ -135,15 +135,49 @@ function preprocessHighlights(md: string): string {
 }
 
 function postprocessInlineHtml(md: string): string {
-  let result = md;
-  result = result.replace(/<strong\b[^>]*>([\s\S]*?)<\/strong>/gi, "**$1**");
-  result = result.replace(/<b\b[^>]*>([\s\S]*?)<\/b>/gi, "**$1**");
-  result = result.replace(/<em\b[^>]*>([\s\S]*?)<\/em>/gi, "*$1*");
-  result = result.replace(/<i\b[^>]*>([\s\S]*?)<\/i>/gi, "*$1*");
-  result = result.replace(/<mark\b[^>]*>([\s\S]*?)<\/mark>/gi, "==$1==");
-  result = result.replace(/<del\b[^>]*>([\s\S]*?)<\/del>/gi, "~~$1~~");
-  result = result.replace(/<s\b[^>]*>([\s\S]*?)<\/s>/gi, "~~$1~~");
-  return result;
+  const transform = (chunk: string) => {
+    let result = chunk;
+    result = result.replace(/<p\b([^>]*)>([\s\S]*?)<\/p>/gi, (_, attrs: string, inner: string) => {
+      const id = attrs.match(/data-block-id="([^"]*)"/i)?.[1];
+      const text = inner
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+        .trimEnd();
+      if (id) return `${text} <!-- mded-block:id=${id} -->`;
+      return text;
+    });
+    result = result.replace(/<strong\b[^>]*>([\s\S]*?)<\/strong>/gi, "**$1**");
+    result = result.replace(/<b\b[^>]*>([\s\S]*?)<\/b>/gi, "**$1**");
+    result = result.replace(/<em\b[^>]*>([\s\S]*?)<\/em>/gi, "*$1*");
+    result = result.replace(/<i\b[^>]*>([\s\S]*?)<\/i>/gi, "*$1*");
+    result = result.replace(/<mark\b[^>]*>([\s\S]*?)<\/mark>/gi, "==$1==");
+    result = result.replace(/<del\b[^>]*>([\s\S]*?)<\/del>/gi, "~~$1~~");
+    result = result.replace(/<s\b[^>]*>([\s\S]*?)<\/s>/gi, "~~$1~~");
+    return result;
+  };
+
+  const lines = md.split("\n");
+  const out: string[] = [];
+  let inFence = false;
+  let buf: string[] = [];
+  const flush = () => {
+    if (buf.length) {
+      out.push(transform(buf.join("\n")));
+      buf = [];
+    }
+  };
+  for (const line of lines) {
+    if (/^```/.test(line.trim())) {
+      if (!inFence) flush();
+      inFence = !inFence;
+      out.push(line);
+      continue;
+    }
+    if (inFence) out.push(line);
+    else buf.push(line);
+  }
+  flush();
+  return out.join("\n");
 }
 
 function preprocessTags(md: string): string {

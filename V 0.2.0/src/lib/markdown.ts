@@ -77,11 +77,17 @@ export function getNoteTitle(
 
 export function extractWikiLinks(content: string): string[] {
   const regex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+  const html =
+    /data-wiki-link="true"[^>]*data-target="([^"]+)"|data-target="([^"]+)"[^>]*data-wiki-link="true"/gi;
   const links: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = regex.exec(content)) !== null) {
     const target = match[1]!.trim();
     if (!isBrokenLinkValue(target)) links.push(target);
+  }
+  while ((match = html.exec(content)) !== null) {
+    const target = (match[1] || match[2] || "").trim();
+    if (target && !isBrokenLinkValue(target)) links.push(target);
   }
   return [...new Set(links)];
 }

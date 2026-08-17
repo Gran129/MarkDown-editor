@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/core";
 
-import { syncParagraphBlocksInMarkdown } from "@/lib/block-markdown";
+import { syncBlockRefsInMarkdown, syncParagraphBlocksInMarkdown } from "@/lib/block-markdown";
 import { finalizeWikiLinkMarkdown } from "@/lib/wiki-link-serialize";
 import { syncTablesInMarkdown } from "@/lib/table-markdown";
 import { postprocessMarkdown } from "@/lib/markdown-transform";
@@ -11,7 +11,8 @@ export function getMarkdownFromEditor(ed: Editor): string {
   const raw = storage.markdown.getMarkdown();
   const repaired = finalizeWikiLinkMarkdown(ed, raw);
   const withTables = syncTablesInMarkdown(ed, repaired);
-  const withParagraphs = syncParagraphBlocksInMarkdown(ed, withTables);
+  const withBlocks = syncBlockRefsInMarkdown(ed, withTables);
+  const withParagraphs = syncParagraphBlocksInMarkdown(ed, withBlocks);
   const body = postprocessMarkdown(withParagraphs);
   return sanitizeBrokenWikiLinksInMarkdown(body);
 }

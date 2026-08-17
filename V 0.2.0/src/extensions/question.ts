@@ -1,6 +1,8 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
+import { TextSelection } from "@tiptap/pm/state";
+
 import { QuestionView } from "@/components/editor/QuestionView";
 import {
   createQuestion,
@@ -74,16 +76,31 @@ export const Question = Node.create({
     return {
       insertQuestion:
         (kind) =>
-        ({ commands }) => {
+        ({ state, dispatch }) => {
           const data = createQuestion(kind);
-          return commands.insertContent({
-            type: this.name,
-            attrs: {
-              id: data.id,
-              kind: data.kind,
-              payload: encodeQuestionPayload(data),
-            },
+          const node = this.type.create({
+            id: data.id,
+            kind: data.kind,
+            payload: encodeQuestionPayload(data),
           });
+          const insertPos = state.selection.to;
+          if (dispatch) {
+            let tr = state.tr;
+            const $pos = state.doc.resolve(insertPos);
+            if ($pos.parent.isTextblock && $pos.parentOffset > 0 && $pos.parentOffset < $pos.parent.content.size) {
+              tr = tr.split(insertPos);
+            }
+            const pos = tr.mapping.map(insertPos);
+            const $mapped = tr.doc.resolve(pos);
+            let at = pos;
+            if ($mapped.parent.isTextblock) {
+              at = $mapped.parentOffset === 0 ? $mapped.before() : $mapped.after();
+            }
+            tr = tr.insert(at, node);
+            tr.setSelection(TextSelection.near(tr.doc.resolve(at + node.nodeSize)));
+            dispatch(tr.scrollIntoView());
+          }
+          return true;
         },
     };
   },

@@ -39,7 +39,6 @@ import {
   Upload,
   Globe,
   FileSpreadsheet,
-  ClipboardList,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -52,7 +51,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { generateBlockId } from "@/lib/block-utils";
 import type { QuestionKind } from "@/lib/question";
 import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
@@ -347,62 +345,28 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
   };
 
   const insertBlockReference = () => {
-    const DEFAULT_SYNC_TEXT = "这是一个同步区块，允许用户编辑该区块中的内容。";
     const sel = blockRefSel ?? {
       from: editor.state.selection.from,
       to: editor.state.selection.to,
     };
-    const selected = editor.state.doc.textBetween(sel.from, sel.to).trim();
-    const $from = editor.state.doc.resolve(sel.from);
-    let para = $from.parent;
-    let paraPos = sel.from;
-    if (para.type.name !== "paragraph") {
-      for (let depth = $from.depth; depth > 0; depth--) {
-        const node = $from.node(depth);
-        if (node.type.name === "paragraph") {
-          para = node;
-          paraPos = $from.before(depth);
-          break;
-        }
-      }
-    } else {
-      paraPos = $from.before($from.depth);
-    }
-
-    const text = selected || para.textContent.trim() || DEFAULT_SYNC_TEXT;
-    let blockId = (para.attrs.blockId as string | null) ?? "";
-    if (para.type.name === "paragraph") {
-      if (!para.textContent.trim()) {
-        const tr = editor.state.tr.insertText(DEFAULT_SYNC_TEXT, paraPos + 1);
-        blockId = generateBlockId();
-        tr.setNodeMarkup(paraPos, undefined, { ...para.attrs, blockId });
-        editor.view.dispatch(tr);
-      } else if (!blockId) {
-        blockId = generateBlockId();
-        const pos = paraPos;
-        editor.view.dispatch(
-          editor.state.tr.setNodeMarkup(pos, undefined, { ...para.attrs, blockId }),
-        );
-      }
-    } else {
-      blockId = blockId || generateBlockId();
-    }
-
-    editor
-      .chain()
-      .focus()
-      .insertBlockReference({
-        sourceFile: filePath ?? "",
-        blockId,
-        sync: blockRefSync,
-        content: text,
-      })
-      .run();
+    editor.chain().focus().setTextSelection(sel).run();
+    editor.commands.wrapSelectionAsSyncBlock({
+      sourceFile: filePath ?? "",
+      sync: blockRefSync,
+    });
     setBlockRefOpen(false);
   };
 
   const insertQuestion = (kind: QuestionKind) => {
     editor.chain().focus().insertQuestion(kind).run();
+  };
+
+  const wrapSyncBlock = () => {
+    setBlockRefSel({
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+    });
+    setBlockRefOpen(true);
   };
 
   const openImageDialog = () => {
@@ -742,43 +706,36 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         <ToolbarButton onClick={insertMathBlock} title="插入数学公式块">
           <FunctionSquare className="h-4 w-4" />
         </ToolbarButton>
-        </ToolbarGroup>
-
-        <ToolbarGroup label="题目">
         <ToolbarButton
-          onClick={() => {
-            setBlockRefSel({
-              from: editor.state.selection.from,
-              to: editor.state.selection.to,
-            });
-            setBlockRefOpen(true);
-          }}
-          title="引用当前段落为同步板块"
+          onClick={wrapSyncBlock}
+          title="将选中内容包成同步区块（可复制子级，最多三层嵌套）"
         >
           <Blocks className="h-4 w-4" />
         </ToolbarButton>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              title="题目"
-              aria-label="插入题目"
-            >
-              <ClipboardList className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuLabel>题目</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => insertQuestion("single")}>单选题</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => insertQuestion("multiple")}>多选题</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => insertQuestion("fill")}>填空题</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => insertQuestion("match")}>连线题</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        </ToolbarGroup>
+
+        <ToolbarGroup label="题目">
+        {(
+          [
+            ["single", "单选"],
+            ["multiple", "多选"],
+            ["boolean", "判断"],
+            ["fill", "填空"],
+            ["match", "连线"],
+          ] as const
+        ).map(([kind, label]) => (
+          <Button
+            key={kind}
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-xs"
+            title={`插入${label}题`}
+            onClick={() => insertQuestion(kind)}
+          >
+            {label}
+          </Button>
+        ))}
         </ToolbarGroup>
       </div>
 
@@ -906,11 +863,10 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           }}
         >
           <DialogHeader>
-            <DialogTitle>引用段落板块</DialogTitle>
+            <DialogTitle>创建同步区块</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            将当前段落引用为可同步的「板块」。未选中文字时会创建一个带默认说明的空白同步区块。
-            创建后点击板块标题可在右侧面板查看来源并跳转。
+            会把当前选中的内容包成父级同步区块，不会覆盖成其他段落。之后可用区块上的「复制」创建子级；子级与父级共用同一份内容，最多嵌套三层。
           </p>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -918,10 +874,10 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
               checked={blockRefSync}
               onChange={(e) => setBlockRefSync(e.target.checked)}
             />
-            开启同步（源段落修改时自动更新）
+            开启同步（父级与子级互相更新）
           </label>
           <DialogFooter>
-            <Button onClick={insertBlockReference}>插入引用</Button>
+            <Button onClick={insertBlockReference}>创建同步区块</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

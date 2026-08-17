@@ -4,14 +4,14 @@
 
 仓库：[Gran129/MarkDown-editor](https://github.com/Gran129/MarkDown-editor)
 
-## 下载（Windows v0.2.10）
+## 下载（Windows v0.2.11）
 
 | 文件 | 类型 | 说明 |
 |------|------|------|
-| `MarkDown-editor_0.2.10_x64-setup.exe` | 安装包联网版 | 联网时自动检查 GitHub 更新 |
-| `MarkDown-editor_0.2.10_portable.exe` | 便携版本地版 | 不参与更新检测，可完全离线 |
+| `MarkDown-editor_0.2.11_x64-setup.exe` | 安装包联网版 | 联网时自动检查 GitHub 更新 |
+| `MarkDown-editor_0.2.11_portable.exe` | 便携版本地版 | 不参与更新检测，可完全离线 |
 
-安装包发布在 [GitHub Releases v0.2.10](https://github.com/Gran129/MarkDown-editor/releases/tag/v0.2.10)。仓库 [`releases/`](../releases/) 目录含安装说明；本地打包产物也会复制到该目录。
+安装包发布在 [GitHub Releases v0.2.11](https://github.com/Gran129/MarkDown-editor/releases/tag/v0.2.11)。仓库 [`releases/`](../releases/) 目录含安装说明；本地打包产物也会复制到该目录。
 
 > 需要 **Windows 10/11** 与 **WebView2** 运行时。
 
