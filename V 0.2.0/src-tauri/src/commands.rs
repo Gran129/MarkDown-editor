@@ -30,6 +30,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_false() -> bool {
+    false
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     pub theme: String,
@@ -49,6 +53,12 @@ pub struct AppSettings {
     pub code_inline_on_selection: bool,
     #[serde(default = "default_true")]
     pub code_merge_paragraphs: bool,
+    #[serde(default = "default_false")]
+    pub show_embed_note_content: bool,
+    #[serde(default = "default_false")]
+    pub quiz_enable_grading: bool,
+    #[serde(default = "default_false")]
+    pub quiz_auto_show_answer: bool,
 }
 
 impl Default for AppSettings {
@@ -65,6 +75,9 @@ impl Default for AppSettings {
             default_vault: None,
             code_inline_on_selection: true,
             code_merge_paragraphs: true,
+            show_embed_note_content: false,
+            quiz_enable_grading: false,
+            quiz_auto_show_answer: false,
         }
     }
 }

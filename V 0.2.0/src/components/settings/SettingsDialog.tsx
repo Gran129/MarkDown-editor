@@ -250,6 +250,61 @@ export function SettingsDialog() {
                 </span>
               </label>
             </div>
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">嵌入内容</p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.show_embed_note_content}
+                  onChange={(e) =>
+                    void updateSettings({ show_embed_note_content: e.target.checked })
+                  }
+                />
+                <span>
+                  显示嵌入笔记的内容
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    关闭后，![[笔记]] 只保留点击直达，不展开正文预览。
+                  </span>
+                </span>
+              </label>
+            </div>
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">题目板块</p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.quiz_enable_grading}
+                  onChange={(e) =>
+                    void updateSettings({ quiz_enable_grading: e.target.checked })
+                  }
+                />
+                <span>
+                  启用判断对错功能
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    需在题目框右上角自行导入客观题答案与解析。阅读视图中隐藏导入按钮。
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded"
+                  checked={settings.quiz_auto_show_answer}
+                  disabled={!settings.quiz_enable_grading}
+                  onChange={(e) =>
+                    void updateSettings({ quiz_auto_show_answer: e.target.checked })
+                  }
+                />
+                <span>
+                  作答后自动显示对错与解析
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    关闭时，答完后在题目框右上角显示「显示答案与解析」按钮。
+                  </span>
+                </span>
+              </label>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

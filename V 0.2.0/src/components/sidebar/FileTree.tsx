@@ -430,7 +430,7 @@ export function FileTreeSidebar() {
   const tagFilter = useAppStore((s) => s.tagFilter);
   const vaultTags = useAppStore((s) => s.vaultTags);
   const setTagFilter = useAppStore((s) => s.setTagFilter);
-  const openVault = useAppStore((s) => s.openVault);
+  const openVault = useAppStore((s) => s.requestOpenVault);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const [newNoteOpen, setNewNoteOpen] = useState(false);
   const [newNoteName, setNewNoteName] = useState("");

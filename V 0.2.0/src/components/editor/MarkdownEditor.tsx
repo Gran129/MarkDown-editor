@@ -31,6 +31,7 @@ import { WikiLink } from "@/extensions/wiki-link";
 import { TagMark } from "@/extensions/tag-mark";
 import { Callout } from "@/extensions/callout";
 import { Embed } from "@/extensions/embed";
+import { Question } from "@/extensions/question";
 import { MathBlock } from "@/extensions/math-block";
 import { MathInline } from "@/extensions/math-inline";
 import { useAppStore } from "@/stores/app-store";
@@ -42,7 +43,7 @@ import { resolveLinkTarget } from "@/lib/link-attrs";
 import { isRemoteMedia, resolveNoteMediaFile } from "@/lib/note-format";
 import { isOfficeFileName } from "@/lib/office";
 import { preprocessMarkdown } from "@/lib/markdown-transform";
-import { refreshSameFileBlockReferences, refreshSyncedBlockReferences } from "@/lib/block-sync";
+import { refreshSameFileBlockReferences, refreshSyncedBlockReferences, isBlockSyncPaused } from "@/lib/block-sync";
 import { createWikiLinkSuggestionRenderer } from "@/lib/suggestion-renderer";
 import { insertEmbedAtPoint, isResourceDrag, resourcePathFromEvent } from "@/lib/insert-embed";
 import { endResourceDrag, getResourceDrag } from "@/lib/resource-drag";
@@ -214,6 +215,7 @@ export function MarkdownEditor({
       TagMark,
       Callout,
       Embed,
+      Question,
       MathBlock,
       MathInline,
     ],
@@ -228,6 +230,7 @@ export function MarkdownEditor({
       },
       handleClick: (view: import("@tiptap/pm/view").EditorView, _pos: number, event: MouseEvent) => {
         const target = event.target as HTMLElement;
+        if (target.closest("[data-question]")) return true;
         const wikiEl = target.closest("[data-wiki-link]");
         if (wikiEl) {
           const noteTarget = resolveLinkTarget(
@@ -255,13 +258,14 @@ export function MarkdownEditor({
           if (tag) onTagClickRef.current(tag);
           return true;
         }
-        const blockRefEl = target.closest("[data-block-ref]");
+        const blockRefEl = target.closest("[data-block-ref-label]");
         if (blockRefEl) {
-          let sourceFile = blockRefEl.getAttribute("data-source-file") ?? "";
-          let blockId = blockRefEl.getAttribute("data-block-id") ?? "";
-          let sync = blockRefEl.getAttribute("data-sync") === "true";
+          const wrap = target.closest("[data-block-ref]");
+          let sourceFile = wrap?.getAttribute("data-source-file") ?? "";
+          let blockId = wrap?.getAttribute("data-block-id") ?? "";
+          let sync = wrap?.getAttribute("data-sync") === "true";
           try {
-            const pos = view.posAtDOM(blockRefEl, 0);
+            const pos = view.posAtDOM(wrap ?? blockRefEl, 0);
             const $pos = view.state.doc.resolve(pos);
             for (let depth = $pos.depth; depth >= 0; depth--) {
               const node = $pos.node(depth);
@@ -314,7 +318,10 @@ export function MarkdownEditor({
         if (dropCaretRef.current) dropCaretRef.current.style.display = "none";
         if (!resource) return false;
         event.preventDefault();
-        return insertEmbedAtPoint(view, event.clientX, event.clientY, resource);
+        event.stopPropagation();
+        const inserted = insertEmbedAtPoint(view, event.clientX, event.clientY, resource);
+        endResourceDrag();
+        return inserted;
       },
     }),
     [editable, fontSize, lineHeight, setSelectedBlockRef],
@@ -335,6 +342,8 @@ export function MarkdownEditor({
         if (!editableRef.current) return;
         const md = getMarkdownFromEditor(ed);
         updateTabContent(pathRef.current, md, frontmatterRef.current);
+
+        if (isBlockSyncPaused()) return;
 
         if (blockSyncTimer.current) clearTimeout(blockSyncTimer.current);
         blockSyncTimer.current = setTimeout(() => {
@@ -430,6 +439,10 @@ export function MarkdownEditor({
       if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
     };
     const onDrop = (event: DragEvent) => {
+      if (event.defaultPrevented) {
+        endResourceDrag();
+        return;
+      }
       const resource = resourcePathFromEvent(event);
       if (!resource) return;
       const target = event.target;
@@ -437,6 +450,7 @@ export function MarkdownEditor({
       const ed = editorRef.current;
       if (!ed || ed.isDestroyed) return;
       event.preventDefault();
+      event.stopPropagation();
       insertEmbedAtPoint(ed.view, event.clientX, event.clientY, resource);
       endResourceDrag();
     };
@@ -487,9 +501,14 @@ export function MarkdownEditor({
           if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
         }}
         onDrop={(event) => {
+          if (event.nativeEvent.defaultPrevented) {
+            endResourceDrag();
+            return;
+          }
           const resource = resourcePathFromEvent(event.nativeEvent);
           if (!resource || !editor || editor.isDestroyed) return;
           event.preventDefault();
+          event.stopPropagation();
           insertEmbedAtPoint(editor.view, event.clientX, event.clientY, resource);
           endResourceDrag();
         }}

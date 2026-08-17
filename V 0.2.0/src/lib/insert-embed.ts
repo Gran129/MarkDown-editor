@@ -15,6 +15,8 @@ export function resourcePathFromEvent(event: DragEvent): string {
   return plain.includes(".resources/") ? plain : "";
 }
 
+let lastInsert = { at: 0, target: "" };
+
 /** Insert a block embed, splitting the paragraph when the caret is mid-block. */
 export function insertEmbedAtPoint(
   view: EditorView,
@@ -22,6 +24,11 @@ export function insertEmbedAtPoint(
   clientY: number,
   target: string,
 ): boolean {
+  const now = Date.now();
+  if (lastInsert.target === target && now - lastInsert.at < 120) {
+    return true;
+  }
+
   const coords = view.posAtCoords({ left: clientX, top: clientY });
   if (!coords) return false;
   const embedType = view.state.schema.nodes.embed;
@@ -48,6 +55,8 @@ export function insertEmbedAtPoint(
 
   tr = tr.insert(insertPos, node);
   view.dispatch(tr.scrollIntoView());
+  lastInsert.at = now;
+  lastInsert.target = target;
   return true;
 }
 

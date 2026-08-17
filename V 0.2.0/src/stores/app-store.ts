@@ -22,7 +22,14 @@ import {
   serializeFrontmatter,
   tryParseFrontmatter,
 } from "@/lib/markdown";
-import type { AppSettings, EditorViewMode, FileNode, TabState, TagInfo } from "@/lib/types";
+import type {
+  AppSettings,
+  EditorViewMode,
+  FileNode,
+  SavePromptState,
+  TabState,
+  TagInfo,
+} from "@/lib/types";
 import { loadSidebarWidths } from "@/components/layout/ResizableSidebar";
 import { useEditorStore } from "@/stores/editor-store";
 import { isBinaryOpenable, openableKindFromPath } from "@/lib/file-kinds";
@@ -51,12 +58,18 @@ interface AppStore {
   viewMode: EditorViewMode;
   fileOpenError: string | null;
   ignoreVaultEventsUntil: number;
+  savePrompt: SavePromptState | null;
+  allowAppClose: boolean;
 
   init: () => Promise<void>;
   openVault: (path?: string) => Promise<void>;
+  requestOpenVault: (path?: string) => Promise<void>;
   refreshFileTree: () => Promise<void>;
   openFile: (path: string) => Promise<void>;
   closeTab: (path: string) => void;
+  requestCloseTab: (path: string) => void;
+  requestQuit: () => void;
+  confirmSavePrompt: (action: "save" | "discard" | "cancel") => Promise<void>;
   setActiveTab: (path: string) => void;
   updateTabContent: (path: string, content: string, frontmatter: Record<string, unknown>) => void;
   saveTab: (path: string) => Promise<void>;
@@ -94,6 +107,9 @@ const defaultSettings: AppSettings = {
   default_vault: null,
   code_inline_on_selection: true,
   code_merge_paragraphs: true,
+  show_embed_note_content: false,
+  quiz_enable_grading: false,
+  quiz_auto_show_answer: false,
 };
 
 function clampAutoSaveMinutes(value: number): number {
@@ -131,6 +147,9 @@ function normalizeSettings(loaded: Partial<AppSettings> & { auto_save_ms?: numbe
     auto_save_minutes: minutes,
     auto_save_ms: deriveAutoSaveMs(minutes),
     line_height: clampLineHeight(loaded.line_height ?? defaultSettings.line_height),
+    show_embed_note_content: Boolean(loaded.show_embed_note_content),
+    quiz_enable_grading: Boolean(loaded.quiz_enable_grading),
+    quiz_auto_show_answer: Boolean(loaded.quiz_auto_show_answer),
   };
 }
 
@@ -184,6 +203,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   viewMode: loadViewMode(),
   fileOpenError: null,
   ignoreVaultEventsUntil: 0,
+  savePrompt: null,
+  allowAppClose: false,
 
   init: async () => {
     const loaded = await loadSettings();
@@ -313,6 +334,85 @@ export const useAppStore = create<AppStore>((set, get) => ({
       nextActive = next.length > 0 ? next[next.length - 1]!.path : null;
     }
     set({ tabs: next, activeTabPath: nextActive });
+  },
+
+  requestCloseTab: (path) => {
+    const tab = get().tabs.find((t) => t.path === path);
+    if (!tab) return;
+    if (!tab.isDirty) {
+      get().closeTab(path);
+      return;
+    }
+    set({
+      savePrompt: {
+        mode: "close-tab",
+        files: [{ path: tab.path, title: tab.title }],
+      },
+    });
+  },
+
+  requestOpenVault: async (path) => {
+    const dirty = get().tabs.filter((t) => t.isDirty);
+    if (dirty.length === 0) {
+      await get().openVault(path);
+      return;
+    }
+    set({
+      savePrompt: {
+        mode: "switch-vault",
+        files: dirty.map((t) => ({ path: t.path, title: t.title })),
+        vaultPath: path,
+      },
+    });
+  },
+
+  requestQuit: () => {
+    const dirty = get().tabs.filter((t) => t.isDirty);
+    if (dirty.length === 0) {
+      set({ allowAppClose: true });
+      void import("@tauri-apps/api/window").then(({ getCurrentWindow }) =>
+        getCurrentWindow().destroy(),
+      );
+      return;
+    }
+    set({
+      savePrompt: {
+        mode: "quit",
+        files: dirty.map((t) => ({ path: t.path, title: t.title })),
+      },
+    });
+  },
+
+  confirmSavePrompt: async (action) => {
+    const prompt = get().savePrompt;
+    if (!prompt) return;
+    if (action === "cancel") {
+      set({ savePrompt: null });
+      return;
+    }
+    if (action === "save") {
+      for (const file of prompt.files) {
+        await get().saveTab(file.path);
+      }
+    }
+    set({ savePrompt: null });
+    if (prompt.mode === "close-tab") {
+      for (const file of prompt.files) {
+        get().closeTab(file.path);
+      }
+      return;
+    }
+    if (prompt.mode === "switch-vault") {
+      await get().openVault(prompt.vaultPath);
+      return;
+    }
+    set({ allowAppClose: true });
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().destroy();
+    } catch {
+      window.close();
+    }
   },
 
   setActiveTab: (path: string) => set({ activeTabPath: path }),

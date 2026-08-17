@@ -14,6 +14,7 @@ import {
   postprocessMdedInlineMarks,
   preprocessMdedInlineMarks,
 } from "@/lib/inline-markdown";
+import { preprocessQuestions, postprocessQuestions } from "@/lib/question";
 
 const CALLOUT_TYPES = [
   "note",
@@ -205,6 +206,7 @@ export function preprocessMarkdown(md: string, noteNames: string[] = []): string
   let result = md;
   result = preprocessMdedTables(result);
   result = preprocessBlockRefs(result);
+  result = preprocessQuestions(result);
   result = preprocessParagraphBlocks(result);
   result = preprocessMdedInlineMarks(result);
   result = preprocessCallouts(result);
@@ -224,6 +226,7 @@ export function postprocessMarkdown(md: string): string {
   result = postprocessTags(result);
   result = postprocessMath(result);
   result = postprocessBlockRefs(result);
+  result = postprocessQuestions(result);
   result = postprocessHtmlTables(result);
   result = postprocessMdedInlineMarks(result);
   result = postprocessInlineHtml(result);

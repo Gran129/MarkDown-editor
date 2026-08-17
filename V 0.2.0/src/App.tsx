@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import { UpdateChecker } from "@/components/update/UpdateChecker";
+import { SavePromptDialog } from "@/components/editor/SavePromptDialog";
 import { useAppStore } from "@/stores/app-store";
 import { indexVault } from "@/lib/tauri-api";
 
@@ -136,6 +137,29 @@ function useSystemThemeSync() {
   }, [theme]);
 }
 
+function useUnsavedCloseGuard() {
+  const requestQuit = useAppStore((s) => s.requestQuit);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        unlisten = await getCurrentWindow().onCloseRequested(async (event) => {
+          if (useAppStore.getState().allowAppClose) return;
+          const dirty = useAppStore.getState().tabs.some((tab) => tab.isDirty);
+          if (!dirty) return;
+          event.preventDefault();
+          useAppStore.getState().requestQuit();
+        });
+      } catch {
+        /* browser preview */
+      }
+    })();
+    return () => unlisten?.();
+  }, [requestQuit]);
+}
+
 export default function App() {
   const init = useAppStore((s) => s.init);
 
@@ -146,11 +170,13 @@ export default function App() {
   useKeyboardShortcuts();
   useVaultWatcher();
   useSystemThemeSync();
+  useUnsavedCloseGuard();
 
   return (
     <>
       <AppLayout />
       <UpdateChecker />
+      <SavePromptDialog />
     </>
   );
 }

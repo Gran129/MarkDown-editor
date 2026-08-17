@@ -7,7 +7,7 @@ export function TabBar() {
   const tabs = useAppStore((s) => s.tabs);
   const activeTabPath = useAppStore((s) => s.activeTabPath);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
-  const closeTab = useAppStore((s) => s.closeTab);
+  const closeTab = useAppStore((s) => s.requestCloseTab);
 
   if (tabs.length === 0) return null;
 
