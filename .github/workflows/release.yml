@@ -66,10 +66,10 @@ jobs:
             "- **便携版本地版**：``MarkDown-editor_${ver}_portable.exe`` — 免安装，可离线使用",
             ""
           )
-          $versionMd = "V 0.2.0/VERSION.md"
-          if (Test-Path $versionMd) {
+          $changelog = "CHANGELOG.md"
+          if (Test-Path $changelog) {
             $notes += "### 版本说明", ""
-            $notes += Get-Content $versionMd
+            $notes += Get-Content $changelog
             $notes += ""
           }
           $notes += "安装说明见 ``INSTALL.zh-CN.txt``。需要 Windows 10/11 64 位与 WebView2。"

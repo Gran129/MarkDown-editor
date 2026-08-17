@@ -1,5 +1,7 @@
+import type { Editor } from "@tiptap/core";
 import type { EditorView } from "@tiptap/pm/view";
 
+import { decodeQuestionPayload, questionReferencesFile } from "@/lib/question";
 import { getResourceDrag, isResourceDragEvent } from "@/lib/resource-drag";
 
 export function isResourceDrag(event: DragEvent): boolean {
@@ -61,10 +63,21 @@ export function insertEmbedAtPoint(
 }
 
 export function locateEmbedPreview(fileName: string): boolean {
-  const escaped = fileName.replace(/"/g, "");
+  const nodes = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      "[data-embed][data-target], [data-question-media], img.question-image",
+    ),
+  );
   const el =
-    document.getElementById(`embed-${fileName}`) ??
-    document.querySelector<HTMLElement>(`[data-embed][data-target$="${escaped}"]`);
+    nodes.find((node) => {
+      const hay = [
+        node.getAttribute("data-target") ?? "",
+        node.getAttribute("data-question-media") ?? "",
+        node.getAttribute("src") ?? "",
+        node.getAttribute("alt") ?? "",
+      ].join("\n");
+      return hay.includes(fileName);
+    }) ?? document.getElementById(`embed-${fileName}`);
   if (!el) return false;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.add("is-embed-located");
@@ -72,13 +85,42 @@ export function locateEmbedPreview(fileName: string): boolean {
   return true;
 }
 
-export function resourceIsReferenced(markdown: string, relative: string, fileName: string): boolean {
+export function resourceIsReferenced(
+  markdown: string,
+  relative: string,
+  fileName: string,
+  editor?: Editor | null,
+): boolean {
+  if (editor && !editor.isDestroyed) {
+    let found = false;
+    editor.state.doc.descendants((node) => {
+      if (found) return false;
+      if (node.type.name === "embed") {
+        const target = String(node.attrs.target ?? "");
+        if (target.endsWith(fileName) || target.includes(relative) || target.includes(fileName)) {
+          found = true;
+        }
+      }
+      if (node.type.name === "question") {
+        const data = decodeQuestionPayload(String(node.attrs.payload ?? ""));
+        if (data && questionReferencesFile(data, fileName)) found = true;
+      }
+      if (node.type.name === "image") {
+        const src = String(node.attrs.src ?? "");
+        if (src.includes(fileName) || src.includes(relative)) found = true;
+      }
+    });
+    if (found) return true;
+  }
   const haystack = markdown.replace(/\\/g, "/");
   return (
     haystack.includes(relative) ||
+    haystack.includes(fileName) ||
     haystack.includes(`![[${fileName}]]`) ||
     haystack.includes(`![[.resources/${fileName}]]`) ||
     haystack.includes(`](${relative})`) ||
-    haystack.includes(`](.resources/${fileName})`)
+    haystack.includes(`](.resources/${fileName})`) ||
+    haystack.includes(`图：${relative}`) ||
+    haystack.includes(`图：.resources/${fileName}`)
   );
 }

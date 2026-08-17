@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileUp, LocateFixed, Paperclip } from "lucide-react";
+import { FileUp, LocateFixed, Paperclip, Trash2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { copyIntoNoteResources, listNoteResources, type ResourceFile } from "@/lib/tauri-api";
+import { copyIntoNoteResources, deletePath, listNoteResources, type ResourceFile } from "@/lib/tauri-api";
 import { locateEmbedPreview, resourceIsReferenced } from "@/lib/insert-embed";
 import { beginResourceDrag, endResourceDrag } from "@/lib/resource-drag";
 import { isBinaryOpenable } from "@/lib/file-kinds";
 import { FileTypeIcon } from "@/components/sidebar/FileTypeIcon";
 import { useAppStore } from "@/stores/app-store";
+import { useEditorStore } from "@/stores/editor-store";
 import { cn } from "@/lib/utils";
 
 const HEIGHT_KEY = "markdown-editor-resources-height";
@@ -48,6 +49,19 @@ export function ResourcesPanel() {
   const panelRef = useRef<HTMLDivElement>(null);
   const notePath = noteActive ? activeTabPath : null;
   const markdown = activeTab?.content ?? "";
+  const editor = useEditorStore((s) => s.editor);
+  const [editorTick, setEditorTick] = useState(0);
+
+  useEffect(() => {
+    if (!editor) return;
+    const bump = () => setEditorTick((value) => value + 1);
+    editor.on("update", bump);
+    editor.on("transaction", bump);
+    return () => {
+      editor.off("update", bump);
+      editor.off("transaction", bump);
+    };
+  }, [editor]);
 
   const refresh = useCallback(async () => {
     if (!notePath) {
@@ -124,6 +138,19 @@ export function ResourcesPanel() {
       }
     }
     await refresh();
+  };
+
+  const handleRemove = async (file: ResourceFile) => {
+    const ok = window.confirm(
+      `从资源栏移除「${file.name}」？\n文件会从资源目录中删除，笔记里已插入的引用需要你自行清理。`,
+    );
+    if (!ok) return;
+    try {
+      await deletePath(file.path);
+      await refresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const importOsFiles = async (fileList: FileList | File[]) => {
@@ -218,7 +245,13 @@ export function ResourcesPanel() {
           ) : (
             <ul className="space-y-0.5 px-1 pb-2">
               {files.map((file) => {
-                const referenced = resourceIsReferenced(markdown, file.relative, file.name);
+                const referenced = resourceIsReferenced(
+                  markdown,
+                  file.relative,
+                  file.name,
+                  editor,
+                );
+                void editorTick;
                 return (
                   <li key={file.path}>
                     <div
@@ -250,6 +283,15 @@ export function ResourcesPanel() {
                           <LocateFixed className="h-3.5 w-3.5" />
                         </button>
                       )}
+                      <button
+                        type="button"
+                        className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-destructive"
+                        title="从资源栏移除"
+                        draggable={false}
+                        onClick={() => void handleRemove(file)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </li>
                 );

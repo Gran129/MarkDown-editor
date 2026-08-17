@@ -13,7 +13,6 @@ import {
   ListChecks,
   Quote,
   Code,
-  Code2,
   Minus,
   Link as LinkIcon,
   Image as ImageIcon,
@@ -453,7 +452,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         )}
         </ToolbarGroup>
 
-        <ToolbarGroup label="格式">
+        <ToolbarGroup label="字体">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive("bold")}
@@ -492,14 +491,6 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
           onToggle={() => editor.chain().focus().toggleHighlight().run()}
           icon={<Highlighter className="h-4 w-4" />}
         />
-        <MarkColorMenu
-          editor={editor}
-          mark="code"
-          title="行内代码"
-          active={editor.isActive("code")}
-          onToggle={() => editor.chain().focus().toggleCode().run()}
-          icon={<Code2 className="h-4 w-4" />}
-        />
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleSuperscript().run()}
           active={editor.isActive("superscript")}
@@ -516,7 +507,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         </ToolbarButton>
         </ToolbarGroup>
 
-        <ToolbarGroup label="标题">
+        <ToolbarGroup label="段落">
         {[1, 2, 3].map((level) => {
           const Icon = [Heading1, Heading2, Heading3][level - 1]!;
           return (
@@ -575,9 +566,6 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        </ToolbarGroup>
-
-        <ToolbarGroup label="段落">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleFirstLineIndent().run()}
           active={!!editor.getAttributes("paragraph").textIndent}
@@ -639,9 +627,6 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        </ToolbarGroup>
-
-        <ToolbarGroup label="列表">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive("bulletList")}
@@ -688,7 +673,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
               })
             }
             active={editor.isActive("codeBlock") || editor.isActive("code")}
-            title="代码块"
+            title="代码块（行内代码请在设置中开启「选中文字标成行内代码」后再点此按钮）"
           >
             <Code className="h-4 w-4" />
           </ToolbarButton>
@@ -759,7 +744,7 @@ export function EditorToolbar({ editor, filePath, noteNames = [] }: EditorToolba
         </ToolbarButton>
         </ToolbarGroup>
 
-        <ToolbarGroup label="板块">
+        <ToolbarGroup label="题目">
         <ToolbarButton
           onClick={() => {
             setBlockRefSel({
