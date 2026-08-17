@@ -24,4 +24,27 @@ export const ColoredCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockView);
   },
+
+  addStorage() {
+    return {
+      markdown: {
+        serialize(
+          state: {
+            write: (s: string) => void;
+            closeBlock: (n: unknown) => void;
+            ensureNewLine: () => void;
+            text: (s: string, escape?: boolean) => void;
+          },
+          node: { textContent: string; attrs: { language?: string | null } },
+        ) {
+          const lang = node.attrs.language && node.attrs.language !== "plaintext" ? node.attrs.language : "";
+          state.write("```" + lang + "\n");
+          state.text(node.textContent, false);
+          state.ensureNewLine();
+          state.write("```");
+          state.closeBlock(node);
+        },
+      },
+    };
+  },
 });

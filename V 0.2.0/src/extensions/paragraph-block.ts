@@ -1,7 +1,12 @@
 import Paragraph from "@tiptap/extension-paragraph";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 
-import { buildParagraphStyle, generateBlockId } from "@/lib/block-utils";
+import {
+  buildParagraphStyle,
+  formatBlockComment,
+  generateBlockId,
+  type ParagraphBlockMeta,
+} from "@/lib/block-utils";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -183,5 +188,30 @@ export const ParagraphBlock = Paragraph.extend({
         },
       }),
     ];
+  },
+
+  addStorage() {
+    return {
+      markdown: {
+        serialize(
+          state: { write: (s: string) => void; closeBlock: (n: unknown) => void },
+          node: {
+            textContent: string;
+            attrs: ParagraphBlockMeta;
+          },
+        ) {
+          const comment = formatBlockComment({
+            blockId: node.attrs.blockId ?? null,
+            textIndent: node.attrs.textIndent ?? null,
+            marginLeft: node.attrs.marginLeft ?? null,
+            marginBefore: node.attrs.marginBefore ?? null,
+            marginAfter: node.attrs.marginAfter ?? null,
+            paragraphLineHeight: node.attrs.paragraphLineHeight ?? null,
+          });
+          state.write(`${node.textContent}${comment}`);
+          state.closeBlock(node);
+        },
+      },
+    };
   },
 });

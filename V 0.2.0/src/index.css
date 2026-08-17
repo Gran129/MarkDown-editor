@@ -364,6 +364,9 @@
 .block-reference:hover {
   background: color-mix(in oklch, var(--primary) 10%, transparent);
 }
+.block-reference.is-child {
+  border-left-color: color-mix(in oklch, var(--primary) 65%, var(--muted-foreground));
+}
 .block-reference-label {
   cursor: pointer;
   margin-bottom: 0.25em;

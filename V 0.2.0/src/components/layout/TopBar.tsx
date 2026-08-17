@@ -9,9 +9,9 @@ import {
   Calendar,
   HelpCircle,
   Save,
-  FileSearch,
   Download,
   PenLine,
+  Files,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -179,7 +179,7 @@ export function TopBar() {
         <Calendar className="h-4 w-4" />
       </IconButton>
       <IconButton onClick={() => setQuickSwitcherOpen(true)} title="快速切换 (Ctrl+O)">
-        <FileSearch className="h-4 w-4" />
+        <Files className="h-4 w-4" />
       </IconButton>
       <IconButton onClick={() => setSearchOpen(true)} title="全文搜索 (Ctrl+Shift+F)">
         <Search className="h-4 w-4" />

@@ -7,12 +7,9 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  Columns3,
   Merge,
   PaintBucket,
-  Rows3,
   Split,
-  TableProperties,
   Trash2,
 } from "lucide-react";
 import { BubbleMenu } from "@tiptap/react";
@@ -20,6 +17,7 @@ import { BubbleMenu } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TableColAlign } from "@/extensions/table-extended";
+import { splitMergedCellKeepContent } from "@/lib/table-split";
 
 interface TableMenuProps {
   editor: Editor | null;
@@ -50,6 +48,26 @@ function TableMenuButton({
     >
       {children}
     </Button>
+  );
+}
+
+function DeleteRowIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden>
+      <rect x="1.5" y="3" width="13" height="4" rx="0.8" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="1.5" y="9" width="13" height="4" rx="0.8" fill="currentColor" opacity="0.22" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5 11.1 11 11.1M8 8.2v5.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DeleteColumnIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden>
+      <rect x="3" y="1.5" width="4" height="13" rx="0.8" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="9" y="1.5" width="4" height="13" rx="0.8" fill="currentColor" opacity="0.22" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M11 5.2v5.6M8.2 8h5.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -97,8 +115,9 @@ export function TableMenu({ editor }: TableMenuProps) {
       <TableMenuButton
         onClick={() => editor.chain().focus().deleteRow().run()}
         title="删除当前行"
+        className="text-destructive hover:text-destructive"
       >
-        <Rows3 className="h-3.5 w-3.5" />
+        <DeleteRowIcon className="h-3.5 w-3.5" />
       </TableMenuButton>
 
       <div className="mx-0.5 h-5 w-px bg-border" />
@@ -118,8 +137,9 @@ export function TableMenu({ editor }: TableMenuProps) {
       <TableMenuButton
         onClick={() => editor.chain().focus().deleteColumn().run()}
         title="删除当前列"
+        className="text-destructive hover:text-destructive"
       >
-        <Columns3 className="h-3.5 w-3.5" />
+        <DeleteColumnIcon className="h-3.5 w-3.5" />
       </TableMenuButton>
 
       <div className="mx-0.5 h-5 w-px bg-border" />
@@ -131,8 +151,8 @@ export function TableMenu({ editor }: TableMenuProps) {
         <Merge className="h-3.5 w-3.5" />
       </TableMenuButton>
       <TableMenuButton
-        onClick={() => editor.chain().focus().splitCell().run()}
-        title="拆分单元格"
+        onClick={() => splitMergedCellKeepContent(editor)}
+        title="拆分单元格（保留合并后的内容）"
       >
         <Split className="h-3.5 w-3.5" />
       </TableMenuButton>
@@ -173,21 +193,6 @@ export function TableMenu({ editor }: TableMenuProps) {
           )}
         </TableMenuButton>
       ))}
-
-      <div className="mx-0.5 h-5 w-px bg-border" />
-
-      <TableMenuButton
-        onClick={() => editor.chain().focus().toggleHeaderRow().run()}
-        title="切换表头行"
-      >
-        <TableProperties className="h-3.5 w-3.5" />
-      </TableMenuButton>
-      <TableMenuButton
-        onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
-        title="切换表头列"
-      >
-        <Columns3 className="h-3.5 w-3.5 rotate-90" />
-      </TableMenuButton>
 
       <div className="mx-0.5 h-5 w-px bg-border" />
 

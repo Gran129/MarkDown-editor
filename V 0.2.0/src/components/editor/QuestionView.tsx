@@ -24,6 +24,8 @@ import {
   gradeQuestion,
   parseOfficialAnswer,
   QUESTION_KIND_LABEL,
+  isChoiceQuestion,
+  isSinglePickQuestion,
   type QuestionData,
   type QuestionKind,
   type QuestionMedia,
@@ -283,7 +285,8 @@ export function QuestionView({ node, updateAttributes, editor, selected }: NodeV
     reading &&
     gradingOn &&
     hasOfficial &&
-    data.kind !== "single";
+    data.kind !== "single" &&
+    data.kind !== "boolean";
   const showRevealButton =
     reading && gradingOn && hasOfficial && submitted && !autoReveal && !reveal;
 
@@ -308,7 +311,7 @@ export function QuestionView({ node, updateAttributes, editor, selected }: NodeV
   };
 
   const toggleOption = (id: string) => {
-    if (data.kind === "single") {
+    if (isSinglePickQuestion(data.kind)) {
       setPicked([id]);
       if (reading && gradingOn && hasOfficial) {
         setSubmitted(true);
@@ -501,13 +504,13 @@ export function QuestionView({ node, updateAttributes, editor, selected }: NodeV
             onChange={(promptImages) => patchPayload(updateAttributes, data, { promptImages })}
           />
 
-          {(data.kind === "single" || data.kind === "multiple") && (
+          {(isChoiceQuestion(data.kind)) && (
             <div className="question-options">
               {data.options.map((option, index) => (
                 <div key={option.id} className="question-option-block">
                   <label className="question-option">
                     <input
-                      type={data.kind === "single" ? "radio" : "checkbox"}
+                      type={isSinglePickQuestion(data.kind) ? "radio" : "checkbox"}
                       name={`${data.id}-${viewMode}`}
                       checked={picked.includes(option.id)}
                       disabled={!canInteractOptions}
@@ -529,7 +532,7 @@ export function QuestionView({ node, updateAttributes, editor, selected }: NodeV
                         {String.fromCharCode(65 + index)}. {option.text}
                       </span>
                     )}
-                    {editing && data.options.length > 2 && (
+                    {editing && data.kind !== "boolean" && data.options.length > 2 && (
                       <button
                         type="button"
                         className="ml-auto text-xs text-muted-foreground"
@@ -582,7 +585,7 @@ export function QuestionView({ node, updateAttributes, editor, selected }: NodeV
                   )}
                 </div>
               ))}
-              {editing && (
+              {editing && data.kind !== "boolean" && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -693,20 +696,21 @@ export function QuestionView({ node, updateAttributes, editor, selected }: NodeV
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
             {data.kind === "single" && "直接点选正确选项，不必填写编号。"}
+            {data.kind === "boolean" && "点选「正确」或「错误」。"}
             {data.kind === "multiple" && "勾选全部正确选项。"}
             {data.kind === "fill" && "按填空顺序填写每空答案。"}
             {data.kind === "match" && "先点左侧再点右侧，用连线配对。"}
           </p>
-          {(data.kind === "single" || data.kind === "multiple") && (
+          {isChoiceQuestion(data.kind) && (
             <div className="space-y-1">
               {data.options.map((option, index) => (
                 <label key={option.id} className="flex items-center gap-2 text-sm">
                   <input
-                    type={data.kind === "single" ? "radio" : "checkbox"}
+                    type={isSinglePickQuestion(data.kind) ? "radio" : "checkbox"}
                     name="import-answer"
                     checked={draftOptions.includes(option.id)}
                     onChange={() => {
-                      if (data.kind === "single") setDraftOptions([option.id]);
+                      if (isSinglePickQuestion(data.kind)) setDraftOptions([option.id]);
                       else {
                         setDraftOptions((prev) =>
                           prev.includes(option.id)

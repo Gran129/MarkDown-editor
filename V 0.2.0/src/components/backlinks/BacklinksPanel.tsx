@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getBacklinks, resolveNotePath, createFile } from "@/lib/tauri-api";
 import { extractWikiLinks } from "@/lib/markdown";
-import { nativeNoteFileName } from "@/lib/note-format";
+import { nativeNoteFileName, stripNoteExtension } from "@/lib/note-format";
 import { isBrokenLinkValue } from "@/lib/link-attrs";
 import type { BacklinkResult } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
@@ -21,7 +21,7 @@ export function LinksPanel() {
       setBacklinks([]);
       return;
     }
-    void getBacklinks(vaultPath, activeTab.title).then(setBacklinks);
+    void getBacklinks(vaultPath, stripNoteExtension(activeTab.path) || activeTab.title).then(setBacklinks);
   }, [vaultPath, activeTab?.path, activeTab?.title, activeTab]);
 
   if (!activeTab) {

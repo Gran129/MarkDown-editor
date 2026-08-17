@@ -1,4 +1,4 @@
-import { ExternalLink, Link2, RefreshCw } from "lucide-react";
+import { Copy, ExternalLink, Link2, RefreshCw, Trash2, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores/app-store";
@@ -9,6 +9,7 @@ export function BlockRefPanel() {
   const setSelectedBlockRef = useEditorStore((s) => s.setSelectedBlockRef);
   const setBlockReferenceSync = useEditorStore((s) => s.setBlockReferenceSync);
   const jumpToBlockSource = useEditorStore((s) => s.jumpToBlockSource);
+  const editor = useEditorStore((s) => s.editor);
   const vaultPath = useAppStore((s) => s.vaultPath);
   const viewMode = useAppStore((s) => s.viewMode);
 
@@ -16,7 +17,7 @@ export function BlockRefPanel() {
     return (
       <div className="flex h-full flex-col items-center justify-center p-4 text-center text-sm text-muted-foreground">
         <Link2 className="mb-2 h-8 w-8 opacity-40" />
-        <p>点击文档中的「板块引用」查看来源与同步设置</p>
+        <p>点击文档中的同步区块标题，可复制子级、转为普通或删除</p>
       </div>
     );
   }
@@ -27,8 +28,8 @@ export function BlockRefPanel() {
   return (
     <div className="flex h-full flex-col gap-3 overflow-auto p-3">
       <div>
-        <h3 className="text-sm font-semibold">板块引用</h3>
-        <p className="mt-1 text-xs text-muted-foreground">借鉴 Notion 的同步引用块</p>
+        <h3 className="text-sm font-semibold">同步区块</h3>
+        <p className="mt-1 text-xs text-muted-foreground">父级可复制出无限子级，最多嵌套三层</p>
       </div>
 
       <div className="rounded-md border bg-muted/30 p-3 text-sm">
@@ -56,8 +57,49 @@ export function BlockRefPanel() {
         </span>
       </label>
       <p className="text-xs text-muted-foreground">
-        开启后，源板块修改会自动更新此引用；可随时在此切换。
+        开启后，同一 ID 的父级与子级会互相更新。
       </p>
+
+      {viewMode === "editing" && editor && (
+        <div className="grid grid-cols-1 gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => editor.commands.copySyncBlock()}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            复制为子级
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              editor.commands.unwrapSyncBlock();
+              setSelectedBlockRef(null);
+            }}
+          >
+            <Undo2 className="mr-2 h-4 w-4" />
+            转为普通区块
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full text-destructive hover:text-destructive"
+            onClick={() => {
+              editor.commands.deleteSyncBlock();
+              setSelectedBlockRef(null);
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            删除区块及内容
+          </Button>
+        </div>
+      )}
 
       <Button
         type="button"

@@ -1,4 +1,4 @@
-export type QuestionKind = "single" | "multiple" | "fill" | "match";
+export type QuestionKind = "single" | "multiple" | "boolean" | "fill" | "match";
 
 export const BLANK_TOKEN = "___";
 export const BLANK_DISPLAY = "〔空〕";
@@ -37,9 +37,18 @@ export interface QuestionData {
 export const QUESTION_KIND_LABEL: Record<QuestionKind, string> = {
   single: "单选题",
   multiple: "多选题",
+  boolean: "判断题",
   fill: "填空题",
   match: "连线题",
 };
+
+export function isChoiceQuestion(kind: QuestionKind): boolean {
+  return kind === "single" || kind === "multiple" || kind === "boolean";
+}
+
+export function isSinglePickQuestion(kind: QuestionKind): boolean {
+  return kind === "single" || kind === "boolean";
+}
 
 export function generateQuestionId(): string {
   return `q_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
@@ -70,6 +79,23 @@ export function createQuestion(kind: QuestionKind): QuestionData {
       prompt: `请在空白处填入答案：${BLANK_TOKEN}`,
       promptImages: [],
       options: [],
+      left: [],
+      right: [],
+      answer: "",
+      explanation: "",
+      collapsed: false,
+    };
+  }
+  if (kind === "boolean") {
+    return {
+      id,
+      kind,
+      prompt: "请判断对错。",
+      promptImages: [],
+      options: [
+        { id: "a", text: "正确", images: [] },
+        { id: "b", text: "错误", images: [] },
+      ],
       left: [],
       right: [],
       answer: "",
@@ -163,7 +189,13 @@ export function parseQuestionPayload(raw: string): QuestionData | null {
     const parsed = JSON.parse(raw) as Partial<QuestionData> & { image?: string | null };
     if (!parsed || typeof parsed !== "object") return null;
     const kind = parsed.kind;
-    if (kind !== "single" && kind !== "multiple" && kind !== "fill" && kind !== "match") {
+    if (
+      kind !== "single" &&
+      kind !== "multiple" &&
+      kind !== "boolean" &&
+      kind !== "fill" &&
+      kind !== "match"
+    ) {
       return null;
     }
     const created = createQuestion(kind);
@@ -228,7 +260,7 @@ export function serializeQuestionMarkdown(data: QuestionData): string {
   lines.push(`题干：${data.prompt.replaceAll(BLANK_TOKEN, BLANK_DISPLAY)}`);
   lines.push(...mediaLines(data.promptImages));
 
-  if (data.kind === "single" || data.kind === "multiple") {
+  if (isChoiceQuestion(data.kind)) {
     const official = parseOfficialAnswer(data).optionIds;
     for (const option of data.options) {
       const mark = official.includes(option.id) ? "x" : " ";
@@ -271,9 +303,11 @@ export function serializeQuestionMarkdown(data: QuestionData): string {
   return lines.join("\n");
 }
 
-const OLD_JSON_START_RE = /^⟦question\s+kind="(single|multiple|fill|match)"\s+id="([^"]+)"⟧$/;
+const OLD_JSON_START_RE =
+  /^⟦question\s+kind="(single|multiple|boolean|fill|match)"\s+id="([^"]+)"⟧$/;
 const OLD_JSON_END_RE = /^⟦\/question⟧$/;
-const FENCE_START_RE = /^:::question\s+(single|multiple|fill|match)(?:\s+(collapsed))?\s*$/;
+const FENCE_START_RE =
+  /^:::question\s+(single|multiple|boolean|fill|match)(?:\s+(collapsed))?\s*$/;
 
 function parseMediaLine(line: string): QuestionMedia | null {
   const match = line.match(/^\s*图：(.+?)(?:\s*\|\s*(\d+)\s*%?)?\s*$/);
@@ -288,7 +322,7 @@ function parseMediaLine(line: string): QuestionMedia | null {
 
 function parseReadableQuestion(kind: QuestionKind, body: string[]): QuestionData {
   const data = createQuestion(kind);
-  if (kind === "single" || kind === "multiple") data.options = [];
+  if (isChoiceQuestion(kind)) data.options = [];
   if (kind === "match") {
     data.left = [];
     data.right = [];
@@ -333,7 +367,7 @@ function parseReadableQuestion(kind: QuestionKind, body: string[]): QuestionData
       continue;
     }
     const option = line.match(/^- \[([ xX])\]\s*(.*)$/);
-    if (option && (kind === "single" || kind === "multiple")) {
+    if (option && isChoiceQuestion(kind)) {
       const item: QuestionOption = {
         id: letterId(data.options.length),
         text: option[2] ?? "",
@@ -344,7 +378,7 @@ function parseReadableQuestion(kind: QuestionKind, body: string[]): QuestionData
       if (option[1] !== " ") {
         const ids = data.answer ? data.answer.split(",") : [];
         ids.push(item.id);
-        data.answer = kind === "single" ? item.id : ids.join(",");
+        data.answer = isSinglePickQuestion(kind) ? item.id : ids.join(",");
       }
       continue;
     }
@@ -377,8 +411,8 @@ function parseReadableQuestion(kind: QuestionKind, body: string[]): QuestionData
     }
     data.answer = JSON.stringify(matches);
   }
-  if ((kind === "single" || kind === "multiple") && data.options.length === 0) {
-    data.options = defaultOptions();
+  if (isChoiceQuestion(kind) && data.options.length === 0) {
+    data.options = kind === "boolean" ? createQuestion("boolean").options : defaultOptions();
   }
   return data;
 }
@@ -445,7 +479,7 @@ export function gradeQuestion(
   attempt: { optionIds?: string[]; blanks?: string[]; matches?: Record<string, string> },
 ): boolean {
   if (!data.answer.trim()) return false;
-  if (data.kind === "single") {
+  if (isSinglePickQuestion(data.kind)) {
     return (attempt.optionIds?.[0] ?? "") === data.answer.trim();
   }
   if (data.kind === "multiple") {
@@ -490,7 +524,7 @@ export function parseOfficialAnswer(data: QuestionData): {
   blanks: string[];
   matches: Record<string, string>;
 } {
-  if (data.kind === "single") {
+  if (isSinglePickQuestion(data.kind)) {
     return { optionIds: data.answer.trim() ? [data.answer.trim()] : [], blanks: [], matches: {} };
   }
   if (data.kind === "multiple") {
@@ -529,7 +563,7 @@ export function encodeOfficialAnswer(
   blanks: string[],
   matches: Record<string, string>,
 ): string {
-  if (kind === "single") return optionIds[0] ?? "";
+  if (isSinglePickQuestion(kind)) return optionIds[0] ?? "";
   if (kind === "multiple") return optionIds.join(",");
   if (kind === "fill") return JSON.stringify(blanks);
   return JSON.stringify(matches);
